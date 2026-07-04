@@ -1,108 +1,145 @@
+"use client";
+
 import Link from "next/link";
-import { FiArrowUpRight, FiClock, FiFileText } from "react-icons/fi";
-import { dashboardMetrics, recentEvidence } from "@/lib/dapp-data";
+import { FiArrowRight, FiClock, FiFileText, FiLayers, FiUploadCloud } from "react-icons/fi";
+import { useAuth } from "@/components/auth-provider";
+
+const workflowActions = [
+  {
+    href: "/register-evidence",
+    title: "Register evidence",
+    description: "Start a new intake record and attach the supporting files.",
+    icon: FiUploadCloud,
+  },
+  {
+    href: "/transfer-custody",
+    title: "Transfer custody",
+    description: "Prepare a handoff and sign the transfer transaction.",
+    icon: FiArrowRight,
+  },
+  {
+    href: "/audit-report",
+    title: "Audit report",
+    description: "Review the event log and export a compliance report.",
+    icon: FiFileText,
+  },
+  {
+    href: "/",
+    title: "Portal overview",
+    description: "Jump back to the main entry screen and route index.",
+    icon: FiLayers,
+  },
+];
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {dashboardMetrics.map((metric) => (
-          <article
-            key={metric.label}
-            className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5"
-          >
-            <p className="text-sm text-slate-400">{metric.label}</p>
-            <p className="mt-3 text-3xl font-semibold text-white">{metric.value}</p>
-            <p className="mt-2 text-sm text-cyan-200/80">{metric.delta}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-white">Recent evidence</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Latest chain activity and custody updates.
-              </p>
-            </div>
-            <Link
-              href="/register-evidence"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-cyan-300/30 hover:bg-cyan-300/10"
-            >
-              Register new
-              <FiArrowUpRight />
-            </Link>
+      <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-cyan-400/10 via-white/5 to-slate-950/80 p-6 shadow-2xl shadow-cyan-950/20">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Dashboard</p>
+            <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
+              Secure portal workspace
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              Use the dashboard to launch the core chain-of-custody workflows. No mock evidence
+              rows are shown here, only live actions and the current authenticated session.
+            </p>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10">
-            <table className="min-w-full divide-y divide-white/10 text-left text-sm">
-              <thead className="bg-white/5 text-slate-400">
-                <tr>
-                  <th className="px-4 py-3 font-medium">ID</th>
-                  <th className="px-4 py-3 font-medium">Title</th>
-                  <th className="px-4 py-3 font-medium">Owner</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Updated</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10 bg-slate-950/60 text-slate-200">
-                {recentEvidence.map((item) => (
-                  <tr key={item.id} className="hover:bg-white/5">
-                    <td className="px-4 py-4 font-medium text-cyan-200">
-                      <Link href={`/evidence/${item.id}`}>{item.id}</Link>
-                    </td>
-                    <td className="px-4 py-4">{item.title}</td>
-                    <td className="px-4 py-4">{item.owner}</td>
-                    <td className="px-4 py-4">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-slate-400">{item.updatedAt}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
+              <span className="block text-xs uppercase tracking-[0.2em] text-slate-500">User</span>
+              <span className="mt-1 block truncate text-white">{user?.email ?? "Signed in"}</span>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
+              <span className="block text-xs uppercase tracking-[0.2em] text-slate-500">
+                Session
+              </span>
+              <span className="mt-1 block text-white">
+                {user?.metadata.lastSignInTime ? "Restored from Firebase" : "Active"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {workflowActions.map((action) => {
+          const Icon = action.icon;
+
+          return (
+            <Link
+              key={action.title}
+              href={action.href}
+              className="group rounded-[1.5rem] border border-white/10 bg-white/5 p-5 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-white/10"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/75 text-cyan-300">
+                    <Icon className="text-lg" />
+                  </div>
+                  <h2 className="mt-4 text-xl font-semibold text-white">{action.title}</h2>
+                </div>
+                <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300 transition group-hover:border-cyan-300/30 group-hover:text-white">
+                  Open
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-300">{action.description}</p>
+            </Link>
+          );
+        })}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
+          <div className="flex items-center gap-3">
+            <FiClock className="text-cyan-300" />
+            <div>
+              <h2 className="text-xl font-semibold text-white">Session status</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Authentication remains active while you navigate the portal.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+              <span className="block text-xs uppercase tracking-[0.2em] text-slate-500">
+                Signed in as
+              </span>
+              <p className="mt-2 text-white">{user?.email ?? "Unknown user"}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+              <span className="block text-xs uppercase tracking-[0.2em] text-slate-500">
+                Persistence
+              </span>
+              <p className="mt-2 text-white">Firebase local session persistence is enabled.</p>
+            </div>
           </div>
         </article>
 
-        <aside className="space-y-4 rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
-          <div>
-            <h2 className="text-xl font-semibold text-white">Workflow health</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Evidence operations status for the last 30 days.
-            </p>
-          </div>
-          <div className="space-y-3">
-            {[
-              { label: "Pending approvals", value: "04", icon: FiClock },
-              { label: "Manual reviews", value: "07", icon: FiFileText },
-              { label: "Failed verifications", value: "01", icon: FiArrowUpRight },
-            ].map((item) => {
-              const Icon = item.icon;
+        <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
+          <h2 className="text-xl font-semibold text-white">What you can do next</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Every button below routes to an existing portal screen.
+          </p>
 
-              return (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
-                      <Icon />
-                    </span>
-                    <div>
-                      <p className="text-sm text-slate-300">{item.label}</p>
-                      <p className="text-xs text-slate-500">Operating queue</p>
-                    </div>
-                  </div>
-                  <span className="text-2xl font-semibold text-white">{item.value}</span>
-                </div>
-              );
-            })}
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {workflowActions.map((action) => (
+              <Link
+                key={`${action.href}-secondary`}
+                href={action.href}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-white"
+              >
+                <span className="block font-semibold text-white">{action.title}</span>
+                <span className="mt-1 block leading-6 text-slate-400">{action.description}</span>
+              </Link>
+            ))}
           </div>
-        </aside>
+        </article>
       </section>
     </div>
   );

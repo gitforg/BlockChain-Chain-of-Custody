@@ -13,7 +13,7 @@ const screens = [
     title: "Login",
     href: "/login",
     description:
-      "Connect MetaMask, detect the wallet, and assign a role before entering the portal.",
+      "Sign in with Firebase Email/Password before entering the secure portal.",
     icon: FiShield,
   },
   {
@@ -104,7 +104,7 @@ export default function Home() {
             <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-400/15 to-sky-500/5 p-4">
               <p className="text-sm text-slate-300">Prototype actions supported</p>
               <div className="mt-3 grid gap-2 text-sm text-slate-100">
-                <span>MetaMask login and role assignment</span>
+                <span>Firebase login and protected session persistence</span>
                 <span>Evidence intake with file upload</span>
                 <span>Custody timeline, QR preview, and hash verification</span>
                 <span>Transfer signing and audit export</span>
