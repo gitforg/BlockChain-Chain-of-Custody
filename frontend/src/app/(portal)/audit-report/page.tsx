@@ -1,150 +1,239 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FiDownload, FiFileText, FiFilter } from "react-icons/fi";
+import {
+  FileSpreadsheet,
+  Download,
+  Filter,
+  History,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Link as LinkIcon,
+  Printer,
+} from "lucide-react";
 import { auditLogs } from "@/lib/dapp-data";
 
 type FilterState = {
   actor: string;
   action: string;
   status: string;
+  evidenceId: string;
 };
 
 function downloadCsv(rows: typeof auditLogs) {
-  const header = ["time", "actor", "action", "status", "detail"];
+  const header = ["time", "actor", "action", "status", "evidenceId", "txHash", "detail"];
   const csv = [
     header.join(","),
     ...rows.map((row) =>
-      header.map((key) => `"${row[key as keyof typeof row]}"`).join(","),
+      header.map((key) => `"${row[key as keyof typeof row] || ""}"`).join(","),
     ),
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "audit-report.csv";
+  link.download = "ledger-audit-report.csv";
   link.click();
   URL.revokeObjectURL(url);
 }
 
 export default function AuditReportPage() {
-  const [filters, setFilters] = useState<FilterState>({ actor: "", action: "", status: "" });
+  const [filters, setFilters] = useState<FilterState>({
+    actor: "",
+    action: "",
+    status: "",
+    evidenceId: "",
+  });
 
-  const filtered = useMemo(
-    () =>
-      auditLogs.filter((row) => {
-        const matchesActor =
-          !filters.actor || row.actor.toLowerCase().includes(filters.actor.toLowerCase());
-        const matchesAction =
-          !filters.action || row.action.toLowerCase().includes(filters.action.toLowerCase());
-        const matchesStatus =
-          !filters.status || row.status.toLowerCase().includes(filters.status.toLowerCase());
+  const filtered = useMemo(() => {
+    return auditLogs.filter((row) => {
+      const matchesActor =
+        !filters.actor || row.actor.toLowerCase().includes(filters.actor.toLowerCase());
+      const matchesAction =
+        !filters.action || row.action.toLowerCase().includes(filters.action.toLowerCase());
+      const matchesStatus =
+        !filters.status || row.status.toLowerCase().includes(filters.status.toLowerCase());
+      const matchesEvidence =
+        !filters.evidenceId ||
+        (row.evidenceId && row.evidenceId.toLowerCase().includes(filters.evidenceId.toLowerCase()));
 
-        return matchesActor && matchesAction && matchesStatus;
-      }),
-    [filters],
-  );
+      return matchesActor && matchesAction && matchesStatus && matchesEvidence;
+    });
+  }, [filters]);
+
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
-          <p className="text-sm text-slate-400">Total log entries</p>
-          <p className="mt-3 text-3xl font-semibold text-white">{auditLogs.length}</p>
+    <div className="space-y-6 print:bg-white print:p-0">
+      {/* Header section */}
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border border-slate-200 bg-white p-6 rounded-2xl shadow-xs print:border-none print:shadow-none">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Security Ledger</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Immutable Audit Trail
+          </h1>
+          <p className="text-xs text-slate-500">
+            Cryptographic ledger logs of all evidence registrations, handovers, and status changes.
+          </p>
         </div>
-        <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
-          <p className="text-sm text-slate-400">Filtered results</p>
-          <p className="mt-3 text-3xl font-semibold text-white">{filtered.length}</p>
-        </div>
-        <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
-          <p className="text-sm text-slate-400">Export format</p>
-          <p className="mt-3 text-3xl font-semibold text-white">CSV</p>
-        </div>
-      </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <aside className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-6">
-          <div className="flex items-center gap-3">
-            <FiFilter className="text-cyan-300" />
-            <div>
-              <h2 className="text-xl font-semibold text-white">Filters</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Narrow the audit trail before exporting.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-4">
-            {[
-              ["Actor", "actor"],
-              ["Action", "action"],
-              ["Status", "status"],
-            ].map(([label, key]) => (
-              <label key={label} className="block">
-                <span className="text-sm text-slate-300">{label}</span>
-                <input
-                  value={filters[key as keyof FilterState]}
-                  onChange={(event) =>
-                    setFilters({ ...filters, [key]: event.target.value })
-                  }
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/30"
-                  placeholder={`Filter by ${label.toLowerCase()}`}
-                />
-              </label>
-            ))}
-          </div>
-
+        <div className="flex items-center gap-2 print:hidden">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition shadow-xs"
+          >
+            <Printer className="h-4 w-4" />
+            <span>Export PDF</span>
+          </button>
+          
           <button
             type="button"
             onClick={() => downloadCsv(filtered)}
-            className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 px-5 py-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
           >
-            <FiDownload />
-            Export filtered CSV
+            <FileSpreadsheet className="h-4 w-4" />
+            <span>Export CSV</span>
           </button>
-        </aside>
+        </div>
+      </section>
 
-        <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-6">
-          <div className="flex items-center gap-3">
-            <FiFileText className="text-cyan-300" />
-            <div>
-              <h2 className="text-xl font-semibold text-white">Audit log</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Reviewable event stream for operations and compliance.
-              </p>
-            </div>
+      {/* Grid counters */}
+      <section className="grid gap-4 grid-cols-3 print:hidden">
+        <div className="border border-slate-200 bg-white p-5 rounded-2xl shadow-xs">
+          <span className="block text-[10px] font-semibold text-slate-450 uppercase">Total Audit Logs</span>
+          <span className="mt-2 block text-2xl font-extrabold text-slate-900">{auditLogs.length}</span>
+        </div>
+        <div className="border border-slate-200 bg-white p-5 rounded-2xl shadow-xs">
+          <span className="block text-[10px] font-semibold text-slate-450 uppercase">Filtered Logs</span>
+          <span className="mt-2 block text-2xl font-extrabold text-slate-900">{filtered.length}</span>
+        </div>
+        <div className="border border-slate-200 bg-white p-5 rounded-2xl shadow-xs">
+          <span className="block text-[10px] font-semibold text-slate-450 uppercase">Ledger Nodes</span>
+          <span className="mt-2 block text-2xl font-extrabold text-blue-600">Active</span>
+        </div>
+      </section>
+
+      {/* Main filter-list panel */}
+      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+        {/* Filters Panel */}
+        <aside className="border border-slate-200 bg-white p-5 rounded-2xl shadow-xs space-y-4 print:hidden self-start">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+            <Filter className="h-4 w-4 text-blue-600" />
+            <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Search Filters</span>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-[1.25rem] border border-white/10">
-            <table className="min-w-full divide-y divide-white/10 text-left text-sm">
-              <thead className="bg-white/5 text-slate-400">
+          <div className="space-y-3.5">
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Evidence ID</label>
+              <input
+                type="text"
+                placeholder="Filter by ref ID..."
+                value={filters.evidenceId}
+                onChange={(e) => setFilters({ ...filters, evidenceId: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Operator / Actor</label>
+              <input
+                type="text"
+                placeholder="Filter by officer..."
+                value={filters.actor}
+                onChange={(e) => setFilters({ ...filters, actor: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Action Trigger</label>
+              <input
+                type="text"
+                placeholder="Filter by action..."
+                value={filters.action}
+                onChange={(e) => setFilters({ ...filters, action: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Receipt Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-650 outline-none focus:border-blue-500 focus:bg-white transition"
+              >
+                <option value="">All Statuses</option>
+                <option value="success">Success</option>
+                <option value="flagged">Flagged</option>
+              </select>
+            </div>
+          </div>
+        </aside>
+
+        {/* Audit Log Table */}
+        <section className="border border-slate-200 bg-white rounded-2xl shadow-xs overflow-hidden print:border-none print:shadow-none">
+          <div className="p-5 border-b border-slate-100 flex items-center gap-2 print:hidden">
+            <History className="h-4.5 w-4.5 text-slate-400" />
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Blockchain Ledger Events</h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Time</th>
-                  <th className="px-4 py-3 font-medium">Actor</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Detail</th>
+                  <th className="px-6 py-3.5">Timestamp</th>
+                  <th className="px-6 py-3.5">Evidence ID</th>
+                  <th className="px-6 py-3.5">Action</th>
+                  <th className="px-6 py-3.5">Operator</th>
+                  <th className="px-6 py-3.5">Log Status</th>
+                  <th className="px-6 py-3.5">Blockchain Tx Hash</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10 bg-slate-950/60 text-slate-200">
-                {filtered.map((row) => (
-                  <tr key={`${row.time}-${row.actor}-${row.action}`} className="hover:bg-white/5">
-                    <td className="px-4 py-4 text-slate-400">{row.time}</td>
-                    <td className="px-4 py-4">{row.actor}</td>
-                    <td className="px-4 py-4">{row.action}</td>
-                    <td className="px-4 py-4">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                        {row.status}
-                      </span>
+              <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                {filtered.length > 0 ? (
+                  filtered.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-slate-400 whitespace-nowrap">{row.time}</td>
+                      <td className="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">{row.evidenceId || "N/A"}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-900 whitespace-nowrap">{row.action}</td>
+                      <td className="px-6 py-4 font-medium text-slate-600 whitespace-nowrap">{row.actor}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${
+                          row.status === "Success"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-[10px] text-slate-400">
+                        <div className="flex items-center gap-1">
+                          <LinkIcon className="h-3 w-3 text-slate-300" />
+                          <span className="truncate max-w-28" title={row.txHash}>{row.txHash}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-medium bg-slate-50/20">
+                      <History className="h-8 w-8 mx-auto text-slate-300 mb-2" />
+                      <p className="text-sm">No ledger logs matched filtering queries.</p>
                     </td>
-                    <td className="px-4 py-4 text-slate-400">{row.detail}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
-        </article>
-      </section>
+        </section>
+      </div>
     </div>
   );
-}
+}

@@ -12,7 +12,11 @@ export async function signInWithEmailPassword(email: string, password: string) {
 }
 
 export async function signOutUser() {
-  await signOut(auth);
+  try {
+    await signOut(auth);
+  } catch (error) {
+    // Ignore Firebase sign out error if offline
+  }
 }
 
 export function getAuthErrorMessage(error: unknown) {

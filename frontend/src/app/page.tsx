@@ -1,145 +1,130 @@
+"use client";
+
 import Link from "next/link";
 import {
-  FiArrowRight,
-  FiCheckSquare,
-  FiFileText,
-  FiLayers,
-  FiShield,
-  FiUpload,
-} from "react-icons/fi";
+  Shield,
+  Upload,
+  Database,
+  Workflow,
+  Send,
+  ShieldCheck,
+  BarChart3,
+} from "lucide-react";
 
-const screens = [
+const features = [
   {
-    title: "Login",
-    href: "/login",
-    description:
-      "Sign in with Firebase Email/Password before entering the secure portal.",
-    icon: FiShield,
+    title: "Analytics Dashboard",
+    description: "Operational throughput metrics, transit counts, laboratory backlogs, and recent ledger activity at a glance.",
+    icon: BarChart3,
   },
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    description:
-      "View evidence throughput, active custodians, and the newest chain activity.",
-    icon: FiLayers,
+    title: "Guided Intake Register",
+    description: "Log case information, attach digital files, calculate client-side SHA-256 signatures, and anchor the registry.",
+    icon: Upload,
   },
   {
-    title: "Register Evidence",
-    href: "/register-evidence",
-    description:
-      "Capture metadata, upload files, and generate a fingerprint in a guided form.",
-    icon: FiUpload,
+    title: "Evidence Archives",
+    description: "Searchable compliance log of all registered digital evidence files, current custodians, and verification entries.",
+    icon: Database,
   },
   {
-    title: "Evidence Detail",
-    href: "/evidence/EV-2048",
-    description:
-      "Inspect the custody timeline, QR code, and hash verifier for a single item.",
-    icon: FiFileText,
+    title: "Chain of Custody Ledger",
+    description: "Chronologically trace every single handoff, acceptance time, and node block verification on the network.",
+    icon: Workflow,
   },
   {
-    title: "Transfer Custody",
-    href: "/transfer-custody",
-    description:
-      "Choose a recipient, review the payload, and sign the transfer transaction.",
-    icon: FiArrowRight,
+    title: "Secure Transfer Handover",
+    description: "Transfer custody to a validated recipient using MetaMask transaction signatures and justification logging.",
+    icon: Send,
   },
   {
-    title: "Audit Report",
-    href: "/audit-report",
-    description:
-      "Filter event logs and export a clean audit package for reviewers.",
-    icon: FiCheckSquare,
+    title: "Integrity Verification Center",
+    description: "Compare candidate files directly with the decentralized blockchain registry to identify potential tampering.",
+    icon: ShieldCheck,
   },
 ];
 
 export default function Home() {
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 sm:px-8 lg:px-10">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl">
-        <div className="grid gap-10 px-6 py-8 md:grid-cols-[1.25fr_0.75fr] md:px-10 md:py-12">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-100">
-              <span className="h-2 w-2 rounded-full bg-cyan-300" />
-              Step 4 frontend for a blockchain chain-of-custody workflow
+    <main className="relative min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between">
+      {/* Subtle grid background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-35 pointer-events-none" />
+
+      {/* Top Header */}
+      <header className="relative z-10 border-b border-slate-200 bg-white shadow-xs">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+              <Shield className="h-5 w-5" />
             </div>
-            <div className="space-y-4">
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                A complete DApp UI for evidence intake, custody transfer, and audit review.
-              </h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-300">
-                This frontend gives you the full operator flow: connect a wallet, register evidence, inspect custody history, sign transfers, and export audit logs.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/login"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-cyan-400 px-6 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-              >
-                Open Login
-              </Link>
-              <Link
-                href="/dashboard"
-                className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-6 text-sm font-semibold text-white transition hover:border-cyan-300/40 hover:bg-cyan-300/10"
-              >
-                View Dashboard
-              </Link>
-            </div>
+            <span className="font-semibold text-slate-900 tracking-tight">
+              Blockchain Chain of Custody
+            </span>
           </div>
-          <div className="grid gap-4 rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-5">
-            <div className="flex items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-              <span>Network</span>
-              <span>Sepolia</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Wallet</p>
-                <p className="mt-2 text-lg font-semibold text-white">Connected</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Role</p>
-                <p className="mt-2 text-lg font-semibold text-white">Compliance</p>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-400/15 to-sky-500/5 p-4">
-              <p className="text-sm text-slate-300">Prototype actions supported</p>
-              <div className="mt-3 grid gap-2 text-sm text-slate-100">
-                <span>Firebase login and protected session persistence</span>
-                <span>Evidence intake with file upload</span>
-                <span>Custody timeline, QR preview, and hash verification</span>
-                <span>Transfer signing and audit export</span>
-              </div>
-            </div>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+          >
+            Access Admin Console
+          </Link>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative z-10 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 text-center space-y-8 flex-1 flex flex-col justify-center">
+        <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold text-blue-700">
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+            Active Network Node: Sepolia testnet
           </div>
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+            Decentralized Evidence Management
+          </h1>
+          <p className="text-lg leading-relaxed text-slate-500 max-w-2xl mx-auto">
+            A secure DApp where law enforcement agencies, forensic laboratories, courts, and legal teams register, transfer, verify, and audit evidence. Actions are permanently anchored on the blockchain to guarantee absolute integrity.
+          </p>
+        </div>
+
+        <div className="flex justify-center">
+          <Link
+            href="/login"
+            className="inline-flex h-12 items-center justify-center rounded-xl bg-blue-600 px-8 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+          >
+            Launch DApp Console
+          </Link>
+        </div>
+
+        {/* Directory Cards (Static features) */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 pt-8">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+
+            return (
+              <div
+                key={feature.title}
+                className="group relative flex flex-col justify-between border border-slate-200 bg-white p-6 rounded-2xl shadow-xs transition"
+              >
+                <div className="space-y-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-blue-600 border border-slate-100 transition">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="text-base font-semibold text-slate-900">{feature.title}</h2>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">{feature.description}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {screens.map((screen) => {
-          const Icon = screen.icon;
-
-          return (
-            <Link
-              key={screen.title}
-              href={screen.href}
-              className="group rounded-[1.5rem] border border-white/10 bg-white/5 p-5 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-white/10"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/75 text-cyan-300">
-                    <Icon className="text-lg" />
-                  </div>
-                  <h2 className="mt-4 text-xl font-semibold text-white">{screen.title}</h2>
-                </div>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
-                  Open
-                </span>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-slate-300">{screen.description}</p>
-            </Link>
-          );
-        })}
-      </section>
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-slate-200 bg-white py-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-400">
+          <p>© 2026 Blockchain Chain of Custody. Certified DApp Ledger System. All rights reserved.</p>
+        </div>
+      </footer>
     </main>
   );
 }

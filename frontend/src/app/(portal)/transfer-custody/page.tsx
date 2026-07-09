@@ -1,110 +1,244 @@
 "use client";
 
-import { useState } from "react";
-import { FiArrowRight, FiCheckCircle, FiUsers } from "react-icons/fi";
-import { transferRecipients } from "@/lib/dapp-data";
+import { useState, useMemo, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  Users,
+  Send,
+  CheckCircle2,
+  Cpu,
+  ArrowRight,
+  FileText,
+  AlertCircle,
+  Key,
+  ShieldCheck,
+  Clock,
+} from "lucide-react";
+import { transferRecipients, recentEvidence } from "@/lib/dapp-data";
 
-export default function TransferCustodyPage() {
+function TransferForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const idParam = searchParams.get("id");
+
+  const [evidenceId, setEvidenceId] = useState(idParam || recentEvidence[0]?.id || "EV-2026-0048");
   const [recipientIndex, setRecipientIndex] = useState(0);
-  const [status, setStatus] = useState<"idle" | "signing" | "signed">("idle");
+  const [reason, setReason] = useState("");
+  const [authPin, setAuthPin] = useState("");
+  const [checkedAuth, setCheckedAuth] = useState(false);
+  const [status, setStatus] = useState<"idle" | "signing" | "broadcasting" | "confirmed">("idle");
+  const [stepMsg, setStepMsg] = useState("");
+
+  const selectedEvidence = useMemo(() => {
+    return recentEvidence.find((item) => item.id === evidenceId) || recentEvidence[0];
+  }, [evidenceId]);
 
   const recipient = transferRecipients[recipientIndex];
 
-  async function signTransaction() {
+  async function executeTransfer() {
+    if (!reason.trim()) {
+      alert("Please state the reason for custody transfer.");
+      return;
+    }
+    if (!checkedAuth) {
+      alert("Please check the digital signature authorization box.");
+      return;
+    }
+
     setStatus("signing");
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setStatus("signed");
+    setStepMsg("Awaiting authorization signature from wallet...");
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    setStatus("broadcasting");
+    setStepMsg("Broadcasting transaction to Sepolia nodes. Verifying gas allowance...");
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+
+    setStatus("confirmed");
+    setStepMsg("Transaction confirmed. Block #18920894 successfully mined!");
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-      <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-6">
-        <div className="flex items-center gap-3">
-          <FiUsers className="text-cyan-300" />
-          <div>
-            <h2 className="text-xl font-semibold text-white">Select recipient</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Choose the wallet that will receive custody of the evidence item.
-            </p>
+    <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      {/* Input panel */}
+      <section className="space-y-6">
+        <article className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-5">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+            <Users className="h-5 w-5 text-blue-600" />
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Custody Handover Handoff</h2>
           </div>
-        </div>
 
-        <div className="mt-6 space-y-3">
-          {transferRecipients.map((entry, index) => {
-            const active = recipientIndex === index;
-
-            return (
-              <button
-                key={entry.wallet}
-                type="button"
-                onClick={() => setRecipientIndex(index)}
-                className={`w-full rounded-2xl border p-4 text-left transition ${
-                  active
-                    ? "border-cyan-300/30 bg-cyan-400/10"
-                    : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
-                }`}
+          <div className="space-y-4">
+            {/* Select Target Evidence */}
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Target Evidence ID</label>
+              <select
+                value={evidenceId}
+                onChange={(e) => setEvidenceId(e.target.value)}
+                disabled={status !== "idle"}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition"
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-white">{entry.name}</p>
-                    <p className="mt-1 text-sm text-slate-400">{entry.role}</p>
-                  </div>
-                  <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-xs text-cyan-200">
-                    {entry.wallet}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <aside className="space-y-6">
-        <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-6">
-          <h3 className="text-lg font-semibold text-white">Transaction summary</h3>
-          <div className="mt-5 grid gap-4 text-sm">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Evidence</p>
-              <p className="mt-2 text-white">EV-2048</p>
+                {recentEvidence.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.id} - {item.type} (Custodian: {item.custodian})
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recipient</p>
-              <p className="mt-2 text-white">{recipient.name}</p>
-              <p className="mt-1 text-slate-400">{recipient.wallet}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Authorization</p>
-              <p className="mt-2 text-slate-300">
-                Two signers required, one signer provided locally.
-              </p>
-            </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={signTransaction}
-            className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl bg-cyan-400 px-5 py-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-          >
-            {status === "signing" ? "Signing..." : "Sign transfer transaction"}
-            <FiArrowRight />
-          </button>
+            {/* Select Recipient */}
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-2">Select Recipient Custodian</label>
+              <div className="grid gap-3">
+                {transferRecipients.map((entry, index) => {
+                  const active = recipientIndex === index;
 
-          {status === "signed" ? (
-            <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-              <div className="flex items-center gap-2">
-                <FiCheckCircle /> Transfer signed and queued for confirmation.
+                  return (
+                    <button
+                      key={entry.wallet}
+                      type="button"
+                      disabled={status !== "idle"}
+                      onClick={() => setRecipientIndex(index)}
+                      className={`w-full rounded-xl border p-4 text-left transition text-xs ${
+                        active
+                          ? "border-blue-500 bg-blue-50/20"
+                          : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-slate-900">{entry.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{entry.role} • {entry.department}</p>
+                        </div>
+                        <span className="font-mono text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-150">
+                          {entry.wallet.slice(0, 6)}...{entry.wallet.slice(-4)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          ) : null}
-        </section>
 
-        <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-6">
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Signed payload</p>
-          <p className="mt-3 break-all rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-mono text-sm text-cyan-200">
-            0x55db2f...e8c1
-          </p>
+            {/* Transfer Justification */}
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Reason for Handoff</label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={status !== "idle"}
+                className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+                placeholder="State forensic case, transfer authorization, or courier transit detail..."
+                required
+              />
+            </div>
+          </div>
+        </article>
+      </section>
+
+      {/* Signing Panel */}
+      <aside className="space-y-6">
+        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-5">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">Transaction Signing</h3>
+          
+          <div className="space-y-4 text-xs">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-semibold">Evidence Ref</span>
+                <span className="font-bold text-slate-900">{selectedEvidence.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-semibold">Current Holder</span>
+                <span className="font-semibold text-slate-900">{selectedEvidence.custodian}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-semibold">Handoff Target</span>
+                <span className="font-semibold text-slate-900">{recipient.name}</span>
+              </div>
+            </div>
+
+            {/* Auth checkbox */}
+            <div className="space-y-3">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checkedAuth}
+                  onChange={(e) => setCheckedAuth(e.target.checked)}
+                  disabled={status !== "idle"}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-350 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-[11px] text-slate-600 leading-tight">
+                  I authorize this custody handover using my cryptographic private key. This action will be permanently recorded on the blockchain ledger.
+                </span>
+              </label>
+
+              <div>
+                <span className="block text-[10px] font-semibold text-slate-400 uppercase">Signer Passphrase / PIN</span>
+                <div className="relative mt-1">
+                  <Key className="absolute top-2.5 left-3 h-4 w-4 text-slate-400" />
+                  <input
+                    type="password"
+                    placeholder="Enter security key pin..."
+                    value={authPin}
+                    onChange={(e) => setAuthPin(e.target.value)}
+                    disabled={status !== "idle"}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-4 pl-10 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {status === "idle" ? (
+              <button
+                type="button"
+                onClick={executeTransfer}
+                className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+              >
+                <Send className="h-4 w-4" />
+                <span>Execute Transfer Handoff</span>
+              </button>
+            ) : (
+              <div className="border border-slate-200 rounded-xl bg-slate-50 p-4 text-center space-y-3">
+                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-800">
+                  <Cpu className="h-4 w-4 text-blue-600 animate-spin" />
+                  <span>Blockchain Handoff Progress</span>
+                </div>
+                <p className="text-[11px] text-slate-500">{stepMsg}</p>
+              </div>
+            )}
+
+            {status === "confirmed" && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs space-y-3">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                  <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0" />
+                  <span>Intake Confirmed</span>
+                </div>
+                <p className="text-emerald-700 text-[11px] leading-relaxed">
+                  Custody successfully transferred to <span className="font-bold">{recipient.name}</span>. The evidence logs have been updated.
+                </p>
+                <div className="pt-2 border-t border-emerald-100 flex gap-2 font-mono text-[9px]">
+                  <span className="text-emerald-600 font-bold">Receipt ID:</span>
+                  <span className="text-slate-600">0x55db2f7f82ab...e8c1</span>
+                </div>
+              </div>
+            )}
+          </div>
         </section>
       </aside>
     </div>
   );
 }
+
+export default function TransferCustodyPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center p-12 bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <Clock className="h-5 w-5 text-slate-400 animate-pulse mr-2" />
+          <span className="text-xs text-slate-500 font-semibold">Loading custody data...</span>
+        </div>
+      }
+    >
+      <TransferForm />
+    </Suspense>
+  );
+}

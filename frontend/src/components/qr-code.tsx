@@ -25,18 +25,18 @@ export function QrCode({ value, label }: QrCodeProps) {
   const matrix = buildMatrix(value);
 
   return (
-    <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/80 p-5">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-500">QR Code</p>
-          <h3 className="mt-2 text-lg font-semibold text-white">{label}</h3>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">QR Registry</p>
+          <h3 className="mt-1 text-base font-semibold text-slate-800">{label}</h3>
         </div>
-        <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-          Hash anchored
+        <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+          On-Chain Anchored
         </div>
       </div>
       <div
-        className="mt-4 grid gap-1 rounded-[1.25rem] bg-white p-4 shadow-inner shadow-slate-950/20"
+        className="mt-4 grid gap-[2px] rounded-xl bg-slate-50 border border-slate-100 p-4 shadow-inner"
         style={{ gridTemplateColumns: `repeat(${matrix.length}, minmax(0, 1fr))` }}
         aria-label={`QR code for ${value}`}
       >
@@ -44,14 +44,14 @@ export function QrCode({ value, label }: QrCodeProps) {
           row.map((cell, colIndex) => (
             <span
               key={`${rowIndex}-${colIndex}`}
-              className={`aspect-square rounded-[2px] ${cell ? "bg-slate-950" : "bg-white"}`}
+              className={`aspect-square rounded-[1px] ${cell ? "bg-slate-900" : "bg-white"}`}
             />
           )),
         )}
       </div>
-      <p className="mt-4 break-all rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+      <p className="mt-4 break-all rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-600">
         {value}
       </p>
     </div>
   );
-}
+}
