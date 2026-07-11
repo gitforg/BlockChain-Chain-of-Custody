@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -13,4 +13,54 @@ model User {
   email     String   @unique
   role      String
   createdAt DateTime @default(now())
+}
+
+model Evidence {
+  id             String         @id
+  title          String
+  caseId         String
+  type           String
+  classification String
+  notes          String         @default("")
+  custodian      String
+  status         String         // Registered, InTransit, InLab, InCourt, Disposed
+  location       String         @default("")
+  department     String         @default("")
+  fileHash       String         // SHA-256 hash of the uploaded file
+  ipfsCid        String         @default("")
+  filePath       String         // Path where the file is stored locally
+  fileName       String
+  fileSize       Int
+  txHash         String         @default("")
+  uploadedBy     String         // Email of the uploading user
+  uploadedAt     DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  custodyEvents  CustodyEvent[]
+}
+
+model CustodyEvent {
+  id           Int      @id @default(autoincrement())
+  evidenceId   String
+  evidence     Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  actor        String
+  department   String
+  action       String
+  time         DateTime @default(now())
+  hash         String   @default("")
+  confirmation String   @default("")
+  status       String
+  note         String   @default("")
+  txHash       String   @default("")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  time       DateTime @default(now())
+  actor      String
+  action     String
+  status     String
+  evidenceId String   @default("")
+  txHash     String   @default("")
+  detail     String
+  ipAddress  String   @default("")
 }

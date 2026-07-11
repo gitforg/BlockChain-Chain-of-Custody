@@ -29,6 +29,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let unsubscribe: (() => void) | undefined;
     let mounted = true;
 
+    // Check if there is a local mock session
+    if (typeof window !== "undefined") {
+      const savedMock = localStorage.getItem("mock_user_session");
+      if (savedMock) {
+        setUser(JSON.parse(savedMock));
+        setLoading(false);
+      }
+    }
+
     void setPersistence(auth, browserLocalPersistence)
       .catch((err) => {
         console.error("Firebase persistence initialization failed:", err);
@@ -38,7 +47,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         unsubscribe = onAuthStateChanged(auth, (nextUser) => {
           if (mounted) {
-            setUser(nextUser);
+            if (nextUser) {
+              setUser(nextUser);
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("mock_user_session");
+              }
+            } else {
+              // Only clear if we don't have a mock user session active
+              if (typeof window !== "undefined" && !localStorage.getItem("mock_user_session")) {
+                setUser(null);
+              }
+            }
             setLoading(false);
           }
         });

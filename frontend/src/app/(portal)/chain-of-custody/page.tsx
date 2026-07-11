@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Workflow,
@@ -14,34 +14,55 @@ import {
   CheckCircle2,
   Send,
 } from "lucide-react";
-import { recentEvidence, custodyTimeline } from "@/lib/dapp-data";
+import { fetchEvidenceList, fetchEvidenceById } from "@/lib/api";
 
 export default function ChainOfCustodyPage() {
-  const [selectedId, setSelectedId] = useState(recentEvidence[0]?.id || "EV-2026-0048");
+  const [selectedId, setSelectedId] = useState("");
+  const [evidenceList, setEvidenceList] = useState<any[]>([]);
+  const [activeEvidence, setActiveEvidence] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const evidence = useMemo(() => {
-    return recentEvidence.find((item) => item.id === selectedId) || recentEvidence[0];
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await fetchEvidenceList();
+        setEvidenceList(data.items);
+        if (data.items.length > 0) {
+          setSelectedId(data.items[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load evidence registry:", err);
+      }
+    }
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    async function loadDetail() {
+      try {
+        setLoading(true);
+        const data = await fetchEvidenceById(selectedId);
+        setActiveEvidence(data);
+      } catch (err) {
+        console.error("Failed to load custody events:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDetail();
   }, [selectedId]);
 
-  // Adjust timeline mock logs slightly depending on the item for dynamic feel
-  const activeTimeline = useMemo(() => {
-    if (evidence.id === "EV-2026-0048") {
-      return custodyTimeline;
-    }
-    // Generate simple dynamic timeline for other items
-    return [
-      {
-        actor: evidence.custodian,
-        department: "Intake Division",
-        action: `Registered Evidence Item ${evidence.id}`,
-        time: evidence.updatedAt,
-        hash: evidence.txHash,
-        confirmation: "Confirmed Block #18920110",
-        status: "Registered",
-        note: `Initial registration. SHA-256 fingerprint generated and stored on the decentralized ledger: ${evidence.ipfsCid}`,
-      }
-    ];
-  }, [evidence]);
+  const evidence = activeEvidence || {
+    id: selectedId || "Syncing...",
+    caseId: "...",
+    classification: "Restricted",
+    status: "Registered",
+    custodian: "...",
+    txHash: "...",
+  };
+
+  const activeTimeline = activeEvidence?.custodyEvents || [];
 
   const statusColors: Record<string, string> = {
     Registered: "bg-sky-50 text-sky-700 border-sky-200",
@@ -72,7 +93,7 @@ export default function ChainOfCustodyPage() {
             onChange={(e) => setSelectedId(e.target.value)}
             className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition"
           >
-            {recentEvidence.map((item) => (
+            {evidenceList.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.id} ({item.type.split(" ")[0]}...)
               </option>
@@ -148,7 +169,7 @@ export default function ChainOfCustodyPage() {
           </h2>
 
           <div className="relative pl-8 border-l border-slate-200 space-y-8">
-            {activeTimeline.map((event, idx) => (
+            {activeTimeline.map((event: any, idx: number) => (
               <div key={idx} className="relative space-y-2">
                 {/* Visual Icon Node */}
                 <span className="absolute -left-[42px] top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-250 text-slate-600 shadow-sm">
@@ -166,7 +187,7 @@ export default function ChainOfCustodyPage() {
                     <span className="text-xs font-bold text-slate-900">{event.actor}</span>
                     <span className="text-[10px] text-slate-400 ml-1.5 font-medium">({event.department})</span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400">{event.time}</span>
+                  <span className="text-[10px] font-mono text-slate-400">{new Date(event.time).toLocaleString()}</span>
                 </div>
 
                 <div className="flex items-center gap-2">

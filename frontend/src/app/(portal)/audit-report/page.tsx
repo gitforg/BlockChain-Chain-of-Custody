@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   FileSpreadsheet,
   Download,
@@ -12,7 +12,7 @@ import {
   Link as LinkIcon,
   Printer,
 } from "lucide-react";
-import { auditLogs } from "@/lib/dapp-data";
+import { fetchAuditLogs } from "@/lib/api";
 
 type FilterState = {
   actor: string;
@@ -21,12 +21,12 @@ type FilterState = {
   evidenceId: string;
 };
 
-function downloadCsv(rows: typeof auditLogs) {
+function downloadCsv(rows: any[]) {
   const header = ["time", "actor", "action", "status", "evidenceId", "txHash", "detail"];
   const csv = [
     header.join(","),
     ...rows.map((row) =>
-      header.map((key) => `"${row[key as keyof typeof row] || ""}"`).join(","),
+      header.map((key) => `"${row[key] || ""}"`).join(","),
     ),
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -45,22 +45,30 @@ export default function AuditReportPage() {
     status: "",
     evidenceId: "",
   });
+  const [logsList, setLogsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = useMemo(() => {
-    return auditLogs.filter((row) => {
-      const matchesActor =
-        !filters.actor || row.actor.toLowerCase().includes(filters.actor.toLowerCase());
-      const matchesAction =
-        !filters.action || row.action.toLowerCase().includes(filters.action.toLowerCase());
-      const matchesStatus =
-        !filters.status || row.status.toLowerCase().includes(filters.status.toLowerCase());
-      const matchesEvidence =
-        !filters.evidenceId ||
-        (row.evidenceId && row.evidenceId.toLowerCase().includes(filters.evidenceId.toLowerCase()));
+  useEffect(() => {
+    async function loadLogs() {
+      try {
+        setLoading(true);
+        const data = await fetchAuditLogs(filters);
+        setLogsList(data);
+      } catch (err) {
+        console.error("Failed to load audit logs:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-      return matchesActor && matchesAction && matchesStatus && matchesEvidence;
-    });
+    const timer = setTimeout(() => {
+      loadLogs();
+    }, 200);
+
+    return () => clearTimeout(timer);
   }, [filters]);
+
+  const filtered = logsList;
 
   const handlePrint = () => {
     if (typeof window !== "undefined") {
@@ -107,7 +115,7 @@ export default function AuditReportPage() {
       <section className="grid gap-4 grid-cols-3 print:hidden">
         <div className="border border-slate-200 bg-white p-5 rounded-2xl shadow-xs">
           <span className="block text-[10px] font-semibold text-slate-450 uppercase">Total Audit Logs</span>
-          <span className="mt-2 block text-2xl font-extrabold text-slate-900">{auditLogs.length}</span>
+          <span className="mt-2 block text-2xl font-extrabold text-slate-900">{logsList.length}</span>
         </div>
         <div className="border border-slate-200 bg-white p-5 rounded-2xl shadow-xs">
           <span className="block text-[10px] font-semibold text-slate-450 uppercase">Filtered Logs</span>
@@ -200,13 +208,13 @@ export default function AuditReportPage() {
                 {filtered.length > 0 ? (
                   filtered.map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-slate-400 whitespace-nowrap">{row.time}</td>
+                      <td className="px-6 py-4 font-medium text-slate-400 whitespace-nowrap">{new Date(row.time).toLocaleString()}</td>
                       <td className="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">{row.evidenceId || "N/A"}</td>
                       <td className="px-6 py-4 font-semibold text-slate-900 whitespace-nowrap">{row.action}</td>
                       <td className="px-6 py-4 font-medium text-slate-600 whitespace-nowrap">{row.actor}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${
-                          row.status === "Success"
+                          row.status === "Success" || row.status === "verified"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : "bg-amber-50 text-amber-700 border-amber-200"
                         }`}>

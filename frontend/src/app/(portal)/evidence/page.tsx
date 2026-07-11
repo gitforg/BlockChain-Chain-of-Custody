@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   FolderArchive,
   Search,
@@ -13,12 +13,40 @@ import {
   Plus,
   FileText,
 } from "lucide-react";
-import { recentEvidence } from "@/lib/dapp-data";
+import { fetchEvidenceList } from "@/lib/api";
 
 export default function EvidencePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [classFilter, setClassFilter] = useState("all");
+  const [evidenceList, setEvidenceList] = useState<any[]>([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const data = await fetchEvidenceList({
+          search: searchTerm,
+          status: statusFilter,
+          classification: classFilter,
+        });
+        setEvidenceList(data.items);
+        setTotalRecords(data.total);
+      } catch (err) {
+        console.error("Failed to load evidence records:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      loadData();
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, statusFilter, classFilter]);
 
   const statusColors: Record<string, string> = {
     Registered: "bg-sky-50 text-sky-700 border-sky-200",
@@ -28,23 +56,7 @@ export default function EvidencePage() {
     Disposed: "bg-slate-100 text-slate-600 border-slate-200",
   };
 
-  const filteredEvidence = useMemo(() => {
-    return recentEvidence.filter((item) => {
-      const matchesSearch =
-        item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.caseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.custodian.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus =
-        statusFilter === "all" || item.status.toLowerCase() === statusFilter.toLowerCase();
-
-      const matchesClass =
-        classFilter === "all" || item.classification.toLowerCase() === classFilter.toLowerCase();
-
-      return matchesSearch && matchesStatus && matchesClass;
-    });
-  }, [searchTerm, statusFilter, classFilter]);
+  const filteredEvidence = evidenceList;
 
   return (
     <div className="space-y-6">
@@ -120,7 +132,7 @@ export default function EvidencePage() {
         <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
           <div>
             Showing <span className="font-semibold text-slate-800">{filteredEvidence.length}</span> of{" "}
-            <span className="font-semibold text-slate-800">{recentEvidence.length}</span> records
+            <span className="font-semibold text-slate-800">{totalRecords}</span> records
           </div>
         </div>
 

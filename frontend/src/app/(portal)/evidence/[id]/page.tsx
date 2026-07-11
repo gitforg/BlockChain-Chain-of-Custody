@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Shield,
@@ -15,7 +15,7 @@ import {
   Compass,
   FileCheck,
 } from "lucide-react";
-import { recentEvidence, custodyTimeline } from "@/lib/dapp-data";
+import { fetchEvidenceById } from "@/lib/api";
 import { QrCode } from "@/components/qr-code";
 
 type EvidenceDetailPageProps = {
@@ -23,31 +23,37 @@ type EvidenceDetailPageProps = {
 };
 
 export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) {
-  // Find matching evidence item or fall back to default
-  const evidence = useMemo(() => {
-    return (
-      recentEvidence.find((item) => item.id === params.id) || {
-        id: params.id,
-        caseId: "CASE-2026-041",
-        type: "Digital Drive (Laptop Seizure)",
-        custodian: "Officer Robert Vance",
-        status: "InLab",
-        updatedAt: "2026-07-07 11:24 UTC",
-        txHash: "0x7c2b9f6d2a4e8b1c9f0d3e5a1b8f4c2d7e9a6f0b1c4d8e2f6a9b3c7d1e5f2a4b",
-        classification: "Restricted",
-        notes: "Redacted email log dump from the corporate network server.",
-        ipfsCid: "QmXoypizjW3WknFixtdKLwugnSm91hGLZT6FL5WfvH9Z4y",
-      }
-    );
-  }, [params.id]);
-
-  const [hashInput, setHashInput] = useState(evidence.txHash);
+  const [evidence, setEvidence] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hashInput, setHashInput] = useState("");
   const [result, setResult] = useState<"idle" | "match" | "mismatch">("idle");
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchEvidenceById(params.id);
+        setEvidence(data);
+        setHashInput(data.fileHash || "");
+      } catch (err: any) {
+        console.error(err);
+        setError("Failed to load evidence details from repository.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [params.id]);
+
   const isMatch = useMemo(
-    () => hashInput.trim().toLowerCase() === evidence.txHash.toLowerCase(),
-    [hashInput, evidence.txHash]
+    () => {
+      if (!evidence) return false;
+      return hashInput.trim().toLowerCase() === evidence.fileHash.toLowerCase();
+    },
+    [hashInput, evidence]
   );
 
   function verifyHash() {
@@ -55,6 +61,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
   }
 
   function handleCopy(text: string, label: string) {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedText(label);
     setTimeout(() => setCopiedText(null), 2000);
@@ -73,6 +80,31 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
       window.print();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12 bg-white rounded-2xl border border-slate-200 min-h-60">
+        <div className="text-center space-y-2">
+          <History className="h-8 w-8 mx-auto text-slate-350 animate-spin" />
+          <p className="text-sm font-semibold text-slate-600">Syncing with ledger console...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !evidence) {
+    return (
+      <div className="flex items-center justify-center p-12 bg-white rounded-2xl border border-slate-200 min-h-60">
+        <div className="text-center space-y-2">
+          <AlertTriangle className="h-8 w-8 mx-auto text-rose-500" />
+          <p className="text-sm font-semibold text-slate-600">{error || "Evidence record not found."}</p>
+          <Link href="/evidence" className="text-xs font-semibold text-blue-600 hover:underline block mt-2">
+            Return to Directory
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 print:bg-white print:p-0">
@@ -158,7 +190,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
             </div>
 
             <div className="relative pl-6 border-l border-slate-200 space-y-6">
-              {custodyTimeline.map((event, index) => (
+              {(evidence.custodyEvents || []).map((event: any, index: number) => (
                 <div key={index} className="relative space-y-2">
                   {/* Indicator Dot */}
                   <span className="absolute -left-[30px] top-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white border border-slate-300">
@@ -172,7 +204,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
                     </div>
                     <span className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-400">
                       <Clock className="h-3 w-3" />
-                      {event.time}
+                      {new Date(event.time).toLocaleString()}
                     </span>
                   </div>
 
@@ -204,7 +236,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
                 <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 uppercase">
                   <span>SHA-256 Hash Fingerprint</span>
                   <button
-                    onClick={() => handleCopy(evidence.txHash, "hash")}
+                    onClick={() => handleCopy(evidence.fileHash, "hash")}
                     className="p-1 hover:bg-slate-50 rounded-lg text-slate-500 hover:text-slate-900 transition flex items-center gap-1"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -212,7 +244,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
                   </button>
                 </div>
                 <div className="mt-1.5 break-all font-mono text-[10px] bg-slate-50 border border-slate-150 p-2.5 rounded-lg text-slate-600 leading-normal">
-                  {evidence.txHash}
+                  {evidence.fileHash}
                 </div>
               </div>
 
@@ -236,7 +268,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
                 <span className="block text-[10px] font-semibold text-slate-400 uppercase">Ledger Confirmation Signature</span>
                 <div className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-slate-800">
                   <Compass className="h-4 w-4 text-blue-600" />
-                  <span>Anchor Block height: #18920655</span>
+                  <span>Anchor Block: Verified on Node</span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Digital signing completed by Officer Vance on node connection.</p>
               </div>

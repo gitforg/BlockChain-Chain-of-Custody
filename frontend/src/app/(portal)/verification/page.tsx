@@ -14,7 +14,8 @@ import {
   Lock,
   ChevronRight,
 } from "lucide-react";
-import { recentEvidence } from "@/lib/dapp-data";
+import { fetchEvidenceList, verifyEvidenceFile } from "@/lib/api";
+import { useEffect } from "react";
 
 function VerificationCenter() {
   const searchParams = useSearchParams();
@@ -26,11 +27,23 @@ function VerificationCenter() {
   const [calculatedHash, setCalculatedHash] = useState("");
   const [auditState, setAuditState] = useState<"idle" | "verified" | "tampered" | "unknown">("idle");
   const [matchedRecord, setMatchedRecord] = useState<any>(null);
+  const [evidenceList, setEvidenceList] = useState<any[]>([]);
 
-  // Auto-fill target hash for simulation if no file is uploaded
+  useEffect(() => {
+    async function loadEvidence() {
+      try {
+        const data = await fetchEvidenceList();
+        setEvidenceList(data.items);
+      } catch (err) {
+        console.error("Failed to load evidence records:", err);
+      }
+    }
+    loadEvidence();
+  }, []);
+
   const targetRecord = useMemo(() => {
-    return recentEvidence.find((item) => item.id === evidenceId) || null;
-  }, [evidenceId]);
+    return evidenceList.find((item) => item.id === evidenceId) || null;
+  }, [evidenceId, evidenceList]);
 
   // Handle file selection and read SHA-256 hash using crypto.subtle
   async function handleFileChange(selectedFile: File) {
@@ -55,41 +68,26 @@ function VerificationCenter() {
   }
 
   // Execute verification audit comparing the computed hash with the register database
-  function handleVerify() {
-    if (!calculatedHash && !file) {
+  async function handleVerify() {
+    if (!file) {
       alert("Please upload a file first.");
       return;
     }
 
-    // Search the ledger for the hash
-    const match = recentEvidence.find(
-      (item) => item.txHash.toLowerCase() === calculatedHash.toLowerCase()
-    );
+    setIsHashing(true);
+    setAuditState("idle");
+    setMatchedRecord(null);
 
-    if (evidenceId) {
-      // User specified which ID they expect this file to represent
-      const expectedRecord = recentEvidence.find((item) => item.id === evidenceId);
-      if (expectedRecord) {
-        if (expectedRecord.txHash.toLowerCase() === calculatedHash.toLowerCase()) {
-          setAuditState("verified");
-          setMatchedRecord(expectedRecord);
-        } else {
-          setAuditState("tampered");
-          setMatchedRecord(expectedRecord);
-        }
-      } else {
-        setAuditState("unknown");
-        setMatchedRecord(null);
-      }
-    } else {
-      // General ledger query without specific expected ID
-      if (match) {
-        setAuditState("verified");
-        setMatchedRecord(match);
-      } else {
-        setAuditState("unknown");
-        setMatchedRecord(null);
-      }
+    try {
+      const response = await verifyEvidenceFile(file, evidenceId || undefined);
+      setAuditState(response.status);
+      setCalculatedHash(response.calculatedHash);
+      setMatchedRecord(response.evidence);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to perform verification check.");
+    } finally {
+      setIsHashing(false);
     }
   }
 
@@ -100,7 +98,7 @@ function VerificationCenter() {
       return;
     }
     setFile(new File(["evidence content"], `${targetRecord.id.toLowerCase()}_payload.bin`));
-    setCalculatedHash(targetRecord.txHash);
+    setCalculatedHash(targetRecord.fileHash);
     setAuditState("verified");
     setMatchedRecord(targetRecord);
   }
@@ -171,9 +169,9 @@ function VerificationCenter() {
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition"
                 >
                   <option value="">Query entire ledger (General lookup)</option>
-                  {recentEvidence.map((item) => (
+                  {evidenceList.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.id} - expected: {item.txHash.slice(0, 10)}...
+                      {item.id} - expected: {item.fileHash.slice(0, 10)}...
                     </option>
                   ))}
                 </select>

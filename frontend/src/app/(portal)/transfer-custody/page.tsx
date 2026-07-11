@@ -14,24 +14,42 @@ import {
   ShieldCheck,
   Clock,
 } from "lucide-react";
-import { transferRecipients, recentEvidence } from "@/lib/dapp-data";
+import { transferRecipients } from "@/lib/dapp-data";
+import { fetchEvidenceList, transferEvidence } from "@/lib/api";
+import { useEffect } from "react";
 
 function TransferForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const idParam = searchParams.get("id");
 
-  const [evidenceId, setEvidenceId] = useState(idParam || recentEvidence[0]?.id || "EV-2026-0048");
+  const [evidenceId, setEvidenceId] = useState(idParam || "");
   const [recipientIndex, setRecipientIndex] = useState(0);
   const [reason, setReason] = useState("");
   const [authPin, setAuthPin] = useState("");
   const [checkedAuth, setCheckedAuth] = useState(false);
   const [status, setStatus] = useState<"idle" | "signing" | "broadcasting" | "confirmed">("idle");
   const [stepMsg, setStepMsg] = useState("");
+  const [evidenceList, setEvidenceList] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadEvidence() {
+      try {
+        const data = await fetchEvidenceList();
+        setEvidenceList(data.items);
+        if (!idParam && data.items.length > 0) {
+          setEvidenceId(data.items[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load evidence for transfer:", err);
+      }
+    }
+    loadEvidence();
+  }, [idParam]);
 
   const selectedEvidence = useMemo(() => {
-    return recentEvidence.find((item) => item.id === evidenceId) || recentEvidence[0];
-  }, [evidenceId]);
+    return evidenceList.find((item) => item.id === evidenceId) || evidenceList[0];
+  }, [evidenceId, evidenceList]);
 
   const recipient = transferRecipients[recipientIndex];
 
@@ -46,15 +64,24 @@ function TransferForm() {
     }
 
     setStatus("signing");
-    setStepMsg("Awaiting authorization signature from wallet...");
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setStepMsg("Signing evidence custody transfer request...");
 
-    setStatus("broadcasting");
-    setStepMsg("Broadcasting transaction to Sepolia nodes. Verifying gas allowance...");
-    await new Promise((resolve) => setTimeout(resolve, 1800));
+    try {
+      await transferEvidence(evidenceId, {
+        newCustodian: recipient.name,
+        department: recipient.department,
+        reason: reason.trim(),
+        action: `Transferred Custody to ${recipient.name}`,
+      });
 
-    setStatus("confirmed");
-    setStepMsg("Transaction confirmed. Block #18920894 successfully mined!");
+      setStatus("confirmed");
+      setStepMsg("Transfer successfully recorded in database and blockchain!");
+    } catch (err: any) {
+      console.error(err);
+      setStatus("idle");
+      setStepMsg("");
+      alert(err.message || "Failed to execute transfer.");
+    }
   }
 
   return (
@@ -77,11 +104,15 @@ function TransferForm() {
                 disabled={status !== "idle"}
                 className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition"
               >
-                {recentEvidence.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.id} - {item.type} (Custodian: {item.custodian})
-                  </option>
-                ))}
+                {evidenceList.length > 0 ? (
+                  evidenceList.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.id} - {item.type} (Custodian: {item.custodian})
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No evidence items available</option>
+                )}
               </select>
             </div>
 

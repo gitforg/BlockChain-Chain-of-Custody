@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Hash,
 } from "lucide-react";
+import { registerEvidence } from "@/lib/api";
 
 const steps = ["General Info", "Custodian Details", "Upload & Hash", "Ledger Submission"];
 
@@ -78,25 +79,38 @@ export default function RegisterEvidencePage() {
       alert("Please enter an evidence title.");
       return;
     }
-    if (!calculatedHash) {
+    if (files.length === 0) {
       alert("Please upload at least one file to hash before submission.");
       return;
     }
 
     setTxState("submitting");
-    setTxMsg("Uploading file bundle payload to IPFS gateway node...");
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setTxMsg("Uploading file bundle and anchoring hash fingerprint...");
 
-    setTxMsg("MetaMask prompt: Signing EvidenceRegistry.registerEvidence transaction...");
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const formData = new FormData();
+      formData.append("file", files[0]);
+      formData.append("title", form.title);
+      formData.append("caseId", form.caseId);
+      formData.append("classification", form.classification);
+      formData.append("notes", form.notes);
+      formData.append("custodian", form.custodian);
+      formData.append("location", form.location);
+      formData.append("department", form.department);
+      formData.append("type", files[0].name.split(".").pop()?.toUpperCase() + " File" || "Digital Evidence");
 
-    setTxMsg("Broadcasting block transaction. Securing consensus confirmations...");
-    await new Promise((resolve) => setTimeout(resolve, 1800));
+      const response = await registerEvidence(formData);
 
-    setTxState("confirmed");
-    setMinedBlock("#18921004");
-    setMinedHash("0x55db2f" + calculatedHash.slice(8, 24) + "e8c1");
-    setTxMsg("Transaction successfully mined and anchored on ledger!");
+      setTxState("confirmed");
+      setMinedBlock("Verified Block");
+      setMinedHash(response.txHash || "0xSimulatedTxHash");
+      setTxMsg("Evidence successfully registered and anchored on the ledger!");
+    } catch (err: any) {
+      console.error(err);
+      setTxState("idle");
+      setTxMsg("");
+      alert(err.message || "Failed to submit evidence registration.");
+    }
   }
 
   return (

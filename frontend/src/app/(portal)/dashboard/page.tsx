@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   FolderArchive,
   Truck,
@@ -18,7 +18,7 @@ import {
   History,
   TrendingUp,
 } from "lucide-react";
-import { dashboardMetrics, recentEvidence } from "@/lib/dapp-data";
+import { fetchStats, fetchEvidenceList } from "@/lib/api";
 
 const iconMap: Record<string, any> = {
   Evidence: FolderArchive,
@@ -34,6 +34,30 @@ const iconMap: Record<string, any> = {
 export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [metrics, setMetrics] = useState<any[]>([]);
+  const [evidenceList, setEvidenceList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadDashboardData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const statsData = await fetchStats();
+        const evidenceData = await fetchEvidenceList({ limit: 10 });
+        
+        setMetrics(statsData.metrics);
+        setEvidenceList(evidenceData.items);
+      } catch (err: any) {
+        console.error(err);
+        setError("Failed to sync ledger console with backend node.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDashboardData();
+  }, []);
 
   const statusColors: Record<string, string> = {
     Registered: "bg-sky-50 text-sky-700 border-sky-200",
@@ -44,7 +68,7 @@ export default function DashboardPage() {
   };
 
   const filteredEvidence = useMemo(() => {
-    return recentEvidence.filter((item) => {
+    return evidenceList.filter((item) => {
       const matchesSearch =
         item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.caseId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -56,7 +80,7 @@ export default function DashboardPage() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchTerm, statusFilter]);
+  }, [evidenceList, searchTerm, statusFilter]);
 
   return (
     <div className="space-y-8">
@@ -75,7 +99,16 @@ export default function DashboardPage() {
 
       {/* Grid of 8 Statistics Cards */}
       <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {dashboardMetrics.map((metric) => {
+        {(metrics.length > 0 ? metrics : [
+          { label: "Total Evidence", value: loading ? "..." : "0", delta: error ? "Sync Error" : "0 this week", icon: "Evidence" },
+          { label: "Evidence In Transit", value: loading ? "..." : "0", delta: error ? "Sync Error" : "0 pending", icon: "Transit" },
+          { label: "Evidence In Laboratory", value: loading ? "..." : "0", delta: error ? "Sync Error" : "0 active", icon: "Lab" },
+          { label: "Evidence In Court", value: loading ? "..." : "0", delta: error ? "Sync Error" : "0 hearings", icon: "Court" },
+          { label: "Disposed Evidence", value: loading ? "..." : "0", delta: error ? "Sync Error" : "0 archived", icon: "Disposed" },
+          { label: "Pending Transfers", value: loading ? "..." : "0", delta: error ? "Sync Error" : "Awaiting signatures", icon: "Pending" },
+          { label: "Verified Hashes", value: loading ? "..." : "0 checks", delta: error ? "Sync Error" : "0 integrity alerts", icon: "Verified" },
+          { label: "Blockchain Transactions", value: loading ? "..." : "0", delta: error ? "Sync Error" : "Mined blocks", icon: "Blockchain" },
+        ]).map((metric) => {
           const Icon = iconMap[metric.icon] || FolderArchive;
 
           return (
