@@ -123,6 +123,30 @@ export async function verifyEvidenceFile(file: File, expectedEvidenceId?: string
   return response.json();
 }
 
+export async function disposeEvidence(id: string) {
+  const response = await fetch(`${API_BASE_URL}/api/evidence/${id}/dispose`, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to dispose of evidence");
+  }
+  return response.json();
+}
+
+export async function destroyEvidence(id: string) {
+  const response = await fetch(`${API_BASE_URL}/api/evidence/${id}/destroy`, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to destroy evidence record");
+  }
+  return response.json();
+}
+
 export type FetchAuditParams = {
   actor?: string;
   action?: string;

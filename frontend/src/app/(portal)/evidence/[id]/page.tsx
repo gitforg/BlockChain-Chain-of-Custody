@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   Copy,
@@ -14,8 +15,10 @@ import {
   Clock,
   Compass,
   FileCheck,
+  Trash2,
+  Ban,
 } from "lucide-react";
-import { fetchEvidenceById } from "@/lib/api";
+import { fetchEvidenceById, disposeEvidence, destroyEvidence } from "@/lib/api";
 import { QrCode } from "@/components/qr-code";
 
 type EvidenceDetailPageProps = {
@@ -23,12 +26,46 @@ type EvidenceDetailPageProps = {
 };
 
 export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) {
+  const router = useRouter();
   const [evidence, setEvidence] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hashInput, setHashInput] = useState("");
   const [result, setResult] = useState<"idle" | "match" | "mismatch">("idle");
   const [copiedText, setCopiedText] = useState<string | null>(null);
+
+  const [submittingDisposal, setSubmittingDisposal] = useState(false);
+  const [submittingDestruction, setSubmittingDestruction] = useState(false);
+
+  async function handleDispose() {
+    if (!confirm("Are you sure you want to legally dispose of this evidence? This action will be permanently recorded on the blockchain.")) return;
+    try {
+      setSubmittingDisposal(true);
+      const updated = await disposeEvidence(params.id);
+      setEvidence(updated);
+      alert("Evidence successfully marked as Disposed on the registry and blockchain!");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to dispose of evidence.");
+    } finally {
+      setSubmittingDisposal(false);
+    }
+  }
+
+  async function handleDestroy() {
+    if (!confirm("CRITICAL WARNING: This will completely destroy the digital evidence record from the SQL database and unpin it from IPFS. This action is irreversible. Are you sure you want to proceed?")) return;
+    try {
+      setSubmittingDestruction(true);
+      await destroyEvidence(params.id);
+      alert("Evidence record and IPFS payload successfully destroyed!");
+      router.push("/evidence");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to destroy evidence.");
+    } finally {
+      setSubmittingDestruction(false);
+    }
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -134,13 +171,36 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
             <Download className="h-4 w-4" />
             <span>Download Report</span>
           </button>
-          <Link
-            href={`/transfer-custody?id=${evidence.id}`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+
+          {evidence.status !== "Disposed" && (
+            <button
+              onClick={handleDispose}
+              disabled={submittingDisposal}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-250 bg-amber-50 px-4 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition shadow-xs disabled:opacity-50"
+            >
+              <Ban className="h-4 w-4" />
+              <span>{submittingDisposal ? "Disposing..." : "Dispose Evidence"}</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleDestroy}
+            disabled={submittingDestruction}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-250 bg-rose-50 px-4 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition shadow-xs disabled:opacity-50"
           >
-            <Send className="h-4 w-4" />
-            <span>Transfer Custody</span>
-          </Link>
+            <Trash2 className="h-4 w-4" />
+            <span>{submittingDestruction ? "Destroying..." : "Destroy Record"}</span>
+          </button>
+
+          {evidence.status !== "Disposed" && (
+            <Link
+              href={`/transfer-custody?id=${evidence.id}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+            >
+              <Send className="h-4 w-4" />
+              <span>Transfer Custody</span>
+            </Link>
+          )}
         </div>
       </section>
 

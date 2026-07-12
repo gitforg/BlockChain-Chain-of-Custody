@@ -48,6 +48,7 @@ function TransferForm() {
   }, [idParam]);
 
   const selectedEvidence = useMemo(() => {
+    if (!evidenceList || evidenceList.length === 0) return null;
     return evidenceList.find((item) => item.id === evidenceId) || evidenceList[0];
   }, [evidenceId, evidenceList]);
 
@@ -175,11 +176,11 @@ function TransferForm() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-slate-400 font-semibold">Evidence Ref</span>
-                <span className="font-bold text-slate-900">{selectedEvidence.id}</span>
+                <span className="font-bold text-slate-900">{selectedEvidence?.id || "N/A"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400 font-semibold">Current Holder</span>
-                <span className="font-semibold text-slate-900">{selectedEvidence.custodian}</span>
+                <span className="font-semibold text-slate-900">{selectedEvidence?.custodian || "N/A"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400 font-semibold">Handoff Target</span>
