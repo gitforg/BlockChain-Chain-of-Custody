@@ -9,16 +9,16 @@ router.get("/", async (req, res) => {
 
     const where = {};
     if (actor) {
-      where.actor = { contains: actor, mode: "insensitive" };
+      where.actor = { contains: actor };
     }
     if (action) {
-      where.action = { contains: action, mode: "insensitive" };
+      where.action = { contains: action };
     }
     if (status) {
-      where.status = { contains: status, mode: "insensitive" };
+      where.status = { contains: status };
     }
     if (evidenceId) {
-      where.evidenceId = { contains: evidenceId, mode: "insensitive" };
+      where.evidenceId = { contains: evidenceId };
     }
 
     const logs = await prisma.auditLog.findMany({

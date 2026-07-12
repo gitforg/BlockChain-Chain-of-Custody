@@ -9,6 +9,7 @@ const prisma = new PrismaClient();
 const hashService = require("../services/hashService");
 const storageService = require("../services/storageService");
 const blockchainService = require("../services/blockchainService");
+const ipfsService = require("../services/ipfsService");
 
 // Multer Storage Configuration
 const storage = multer.diskStorage({
@@ -62,32 +63,32 @@ router.get("/", async (req, res) => {
       const cleanSearch = search.trim();
       where.AND.push({
         OR: [
-          { id: { contains: cleanSearch, mode: "insensitive" } },
-          { caseId: { contains: cleanSearch, mode: "insensitive" } },
-          { title: { contains: cleanSearch, mode: "insensitive" } },
-          { type: { contains: cleanSearch, mode: "insensitive" } },
-          { custodian: { contains: cleanSearch, mode: "insensitive" } },
-          { notes: { contains: cleanSearch, mode: "insensitive" } },
-          { txHash: { contains: cleanSearch, mode: "insensitive" } },
+          { id: { contains: cleanSearch } },
+          { caseId: { contains: cleanSearch } },
+          { title: { contains: cleanSearch } },
+          { type: { contains: cleanSearch } },
+          { custodian: { contains: cleanSearch } },
+          { notes: { contains: cleanSearch } },
+          { txHash: { contains: cleanSearch } },
         ],
       });
     }
 
     // Filters
     if (status !== "all") {
-      where.AND.push({ status: { equals: status, mode: "insensitive" } });
+      where.AND.push({ status: { equals: status } });
     }
     if (classification !== "all") {
-      where.AND.push({ classification: { equals: classification, mode: "insensitive" } });
+      where.AND.push({ classification: { equals: classification } });
     }
     if (custodian !== "all") {
-      where.AND.push({ custodian: { contains: custodian, mode: "insensitive" } });
+      where.AND.push({ custodian: { contains: custodian } });
     }
     if (caseId.trim()) {
-      where.AND.push({ caseId: { contains: caseId.trim(), mode: "insensitive" } });
+      where.AND.push({ caseId: { contains: caseId.trim() } });
     }
     if (department.trim()) {
-      where.AND.push({ department: { contains: department.trim(), mode: "insensitive" } });
+      where.AND.push({ department: { contains: department.trim() } });
     }
 
     // Query DB
@@ -166,19 +167,34 @@ router.post("/", upload.single("file"), async (req, res) => {
     const nextSeq = String(count + 1).padStart(4, "0");
     const evidenceId = `EV-${year}-${nextSeq}`;
 
-    // 3. Save to local storage service
-    const fileDetails = await storageService.saveFile(file);
+    // 3. Upload file to Pinata IPFS service
+    let ipfsResult;
+    try {
+      ipfsResult = await ipfsService.uploadFile(file.path, file.originalname);
+    } catch (ipfsError) {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw new Error(`Failed to upload evidence payload to IPFS storage: ${ipfsError.message}`);
+    }
 
-    // 4. Simulate or execute blockchain transaction
-    const mockCid = "Qm" + fileHash.slice(10, 56);
-    const txDetails = await blockchainService.registerEvidence(
-      evidenceId,
-      caseId,
-      fileHash,
-      mockCid
-    );
+    // 4. Execute blockchain transaction with real CID
+    let txDetails;
+    try {
+      txDetails = await blockchainService.registerEvidence(
+        evidenceId,
+        caseId,
+        fileHash,
+        ipfsResult.ipfsCid
+      );
+    } catch (blockchainError) {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw new Error(`Failed to anchor evidence registry transaction on-chain: ${blockchainError.message}`);
+    }
 
-    // 5. Store metadata in PostgreSQL using Prisma
+    // 5. Store metadata in PostgreSQL
     const evidence = await prisma.evidence.create({
       data: {
         id: evidenceId,
@@ -192,10 +208,10 @@ router.post("/", upload.single("file"), async (req, res) => {
         department,
         status: "Registered",
         fileHash,
-        ipfsCid: mockCid,
-        filePath: fileDetails.filePath,
-        fileName: fileDetails.fileName,
-        fileSize: fileDetails.fileSize,
+        ipfsCid: ipfsResult.ipfsCid,
+        filePath: ipfsResult.gatewayUrl,
+        fileName: file.originalname,
+        fileSize: file.size,
         txHash: txDetails.txHash,
         uploadedBy: userEmail,
       },
@@ -224,15 +240,27 @@ router.post("/", upload.single("file"), async (req, res) => {
         status: "Success",
         evidenceId,
         txHash: txDetails.txHash,
-        detail: `Evidence ${evidenceId} registered with file hash ${fileHash} for Case ${caseId}.`,
+        detail: `Evidence ${evidenceId} registered with file hash ${fileHash} and IPFS CID ${ipfsResult.ipfsCid} for Case ${caseId}.`,
         ipAddress: req.ip || "127.0.0.1",
       },
     });
 
+    // 8. Delete temporary local file upload
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
     res.status(201).json(evidence);
   } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.error("Temp file cleanup failed:", err);
+      }
+    }
     console.error("Register evidence error:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
 
@@ -343,9 +371,9 @@ router.post("/verify", upload.single("file"), async (req, res) => {
     const calculatedHash = hashService.calculateSha256(fileBuffer);
 
     // Delete temp file upload after hashing
-    await storageService.deleteFile(
-      path.relative(path.join(__dirname, ".."), file.path).replace(/\\/g, "/")
-    );
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
 
     let match = null;
 
@@ -397,7 +425,7 @@ router.post("/verify", upload.single("file"), async (req, res) => {
     } else {
       // Search registry for hash
       match = await prisma.evidence.findFirst({
-        where: { fileHash: { equals: calculatedHash, mode: "insensitive" } },
+        where: { fileHash: { equals: calculatedHash } },
       });
 
       if (match) {
@@ -438,8 +466,122 @@ router.post("/verify", upload.single("file"), async (req, res) => {
       evidence: null,
     });
   } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.error("Verification temp cleanup failed:", err);
+      }
+    }
     console.error("Verification API error:", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 6. Dispose Evidence (Mark status as Disposed in SQL database + Blockchain)
+router.post("/:id/dispose", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userEmail = req.headers["x-user-email"] || "officer@evidencechain.com";
+
+    // 1. Fetch item
+    const evidence = await prisma.evidence.findUnique({ where: { id } });
+    if (!evidence) {
+      return res.status(404).json({ error: "Evidence record not found" });
+    }
+    if (evidence.status === "Disposed") {
+      return res.status(400).json({ error: "Evidence is already disposed" });
+    }
+
+    // 2. Perform blockchain disposal
+    const txDetails = await blockchainService.disposeEvidence(id);
+
+    // 3. Update status in database
+    const updated = await prisma.evidence.update({
+      where: { id },
+      data: {
+        status: "Disposed",
+        txHash: txDetails.txHash,
+      },
+    });
+
+    // 4. Record Disposal Event
+    await prisma.custodyEvent.create({
+      data: {
+        evidenceId: id,
+        actor: userEmail.split("@")[0],
+        department: "Court Division",
+        action: "DISPOSED",
+        status: "Disposed",
+        note: `Evidence legally disposed of. Cryptographic verification locked in block #${txDetails.blockNumber}.`,
+        hash: evidence.fileHash,
+        confirmation: `Confirmed Block #${txDetails.blockNumber}`,
+        txHash: txDetails.txHash,
+      },
+    });
+
+    // 5. Log in AuditLog
+    await prisma.auditLog.create({
+      data: {
+        actor: userEmail,
+        action: "Dispose Evidence",
+        status: "Success",
+        evidenceId: id,
+        txHash: txDetails.txHash,
+        detail: `Evidence item ${id} successfully marked as Disposed in the database and anchored on-chain.`,
+        ipAddress: req.ip || "127.0.0.1",
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Dispose evidence error:", error.message);
+    res.status(500).json({ error: error.message || "Internal server error" });
+  }
+});
+
+// 7. Destroy Evidence Record (Purge metadata, unpin from Pinata IPFS)
+router.post("/:id/destroy", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userEmail = req.headers["x-user-email"] || "admin@evidencechain.com";
+
+    // 1. Fetch item
+    const evidence = await prisma.evidence.findUnique({ where: { id } });
+    if (!evidence) {
+      return res.status(404).json({ error: "Evidence record not found" });
+    }
+
+    // 2. Unpin from Pinata IPFS if CID exists
+    if (evidence.ipfsCid) {
+      try {
+        await ipfsService.unpinFile(evidence.ipfsCid);
+      } catch (ipfsError) {
+        console.warn(`[IPFS Cleanup] Pinata unpin failed for ${evidence.ipfsCid}:`, ipfsError.message);
+      }
+    }
+
+    // 3. Delete from database (relation cascade will remove custodyEvents)
+    await prisma.evidence.delete({
+      where: { id },
+    });
+
+    // 4. Log in AuditLog
+    await prisma.auditLog.create({
+      data: {
+        actor: userEmail,
+        action: "Destroy Evidence",
+        status: "Success",
+        evidenceId: id,
+        detail: `Evidence record ${id} (file hash ${evidence.fileHash}) was completely purged from database and unpinned from IPFS.`,
+        ipAddress: req.ip || "127.0.0.1",
+      },
+    });
+
+    res.json({ success: true, message: `Evidence record ${id} successfully destroyed` });
+  } catch (error) {
+    console.error("Destroy evidence error:", error.message);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
 

@@ -37,6 +37,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error: " + err.message });
 });
 
+console.log(
+  process.env.PINATA_JWT
+    ? "✅ Pinata Connected"
+    : "❌ Pinata Missing"
+);
+
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
