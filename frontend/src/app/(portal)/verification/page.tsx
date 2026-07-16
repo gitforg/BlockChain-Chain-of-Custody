@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { fetchEvidenceList, verifyEvidenceFile } from "@/lib/api";
+import { sha256HexFromFile } from "@/lib/file-hash";
 import { useEffect } from "react";
 
 function VerificationCenter() {
@@ -53,11 +54,7 @@ function VerificationCenter() {
     setMatchedRecord(null);
 
     try {
-      const buffer = await selectedFile.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const sha256Hex = "0x" + hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-      
+      const sha256Hex = await sha256HexFromFile(selectedFile);
       setCalculatedHash(sha256Hex);
       setIsHashing(false);
     } catch (err) {

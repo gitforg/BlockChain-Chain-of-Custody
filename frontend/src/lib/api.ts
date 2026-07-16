@@ -1,6 +1,71 @@
 import { auth } from "@/firebase/firebase";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+const API_BASE_URL =
+  typeof window === "undefined"
+    ? configuredApiUrl
+    : /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configuredApiUrl)
+      ? ""
+      : configuredApiUrl;
+
+type EvidenceListResponse = {
+  items: any[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+type StatsResponse = {
+  metrics: any[];
+  distribution: {
+    total: number;
+    inLab: number;
+    inTransit: number;
+    inCourt: number;
+    disposed: number;
+  };
+};
+
+const EMPTY_STATS: StatsResponse = {
+  metrics: [],
+  distribution: {
+    total: 0,
+    inLab: 0,
+    inTransit: 0,
+    inCourt: 0,
+    disposed: 0,
+  },
+};
+
+const EMPTY_EVIDENCE_LIST: EvidenceListResponse = {
+  items: [],
+  total: 0,
+  page: 1,
+  limit: 100,
+  totalPages: 0,
+};
+
+function warnAndReturnFallback(endpoint: string, error: unknown, fallback: any) {
+  console.warn(`[api] ${endpoint} unavailable, using local fallback.`, error);
+  return fallback;
+}
+
+async function fetchJsonWithFallback<T>(url: string, endpoint: string, fallback: T): Promise<T> {
+  try {
+    const response = await fetch(url, {
+      headers: getHeaders(),
+    });
+
+    if (!response.ok) {
+      return warnAndReturnFallback(endpoint, new Error(`HTTP ${response.status}`), fallback);
+    }
+
+    return response.json();
+  } catch (error) {
+    return warnAndReturnFallback(endpoint, error, fallback);
+  }
+}
 
 /**
  * Gets the current authenticated user's email.
@@ -34,13 +99,7 @@ export type FetchEvidenceParams = {
 };
 
 export async function fetchStats() {
-  const response = await fetch(`${API_BASE_URL}/api/stats`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch dashboard statistics");
-  }
-  return response.json();
+  return fetchJsonWithFallback(`${API_BASE_URL}/api/stats`, "GET /api/stats", EMPTY_STATS);
 }
 
 export async function fetchEvidenceList(params: FetchEvidenceParams = {}) {
@@ -51,23 +110,15 @@ export async function fetchEvidenceList(params: FetchEvidenceParams = {}) {
     }
   });
 
-  const response = await fetch(`${API_BASE_URL}/api/evidence?${query.toString()}`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch evidence list");
-  }
-  return response.json();
+  return fetchJsonWithFallback(
+    `${API_BASE_URL}/api/evidence?${query.toString()}`,
+    "GET /api/evidence",
+    { ...EMPTY_EVIDENCE_LIST, limit: params.limit ?? EMPTY_EVIDENCE_LIST.limit },
+  );
 }
 
 export async function fetchEvidenceById(id: string) {
-  const response = await fetch(`${API_BASE_URL}/api/evidence/${id}`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch evidence record for ${id}`);
-  }
-  return response.json();
+  return fetchJsonWithFallback(`${API_BASE_URL}/api/evidence/${id}`, `GET /api/evidence/${id}`, null);
 }
 
 export async function registerEvidence(formData: FormData) {
@@ -162,11 +213,5 @@ export async function fetchAuditLogs(params: FetchAuditParams = {}) {
     }
   });
 
-  const response = await fetch(`${API_BASE_URL}/api/audit-logs?${query.toString()}`, {
-    headers: getHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch audit logs");
-  }
-  return response.json();
+  return fetchJsonWithFallback(`${API_BASE_URL}/api/audit-logs?${query.toString()}`, "GET /api/audit-logs", []);
 }

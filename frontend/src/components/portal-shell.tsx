@@ -62,6 +62,16 @@ export function PortalShell({ children }: { children: ReactNode }) {
     }
   }
 
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    router.push(`/evidence?search=${encodeURIComponent(query)}`);
+    setIsMobileMenuOpen(false);
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white px-6 py-10">
@@ -139,7 +149,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-4">
             {/* Search Input */}
-            <div className="relative hidden md:block">
+            <form className="relative hidden md:block" onSubmit={handleSearchSubmit}>
               <Search className="absolute top-2.5 left-3 h-4 w-4 text-slate-400" />
               <input
                 type="text"
@@ -147,11 +157,12 @@ export function PortalShell({ children }: { children: ReactNode }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-64 rounded-lg border border-slate-200 bg-slate-50 py-1.5 pr-3 pl-9 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white transition"
+                aria-label="Search evidence records"
               />
-            </div>
+            </form>
 
             {/* Notifications */}
-            <button className="relative p-1.5 text-slate-500 hover:bg-slate-50 rounded-lg transition">
+            <button className="relative p-1.5 text-slate-500 hover:bg-slate-50 rounded-lg transition" type="button">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-blue-600" />
             </button>
@@ -284,4 +295,4 @@ export function PortalShell({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
-}
+}

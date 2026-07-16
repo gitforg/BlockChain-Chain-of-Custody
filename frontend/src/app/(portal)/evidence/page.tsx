@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import {
   FolderArchive,
@@ -16,12 +17,18 @@ import {
 import { fetchEvidenceList } from "@/lib/api";
 
 export default function EvidencePage() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [classFilter, setClassFilter] = useState("all");
   const [evidenceList, setEvidenceList] = useState<any[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setSearchTerm(initialSearch);
+  }, [initialSearch]);
 
   useEffect(() => {
     async function loadData() {

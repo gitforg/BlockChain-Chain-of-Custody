@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FilePlus,
   Shield,
@@ -15,8 +15,35 @@ import {
   Hash,
 } from "lucide-react";
 import { registerEvidence } from "@/lib/api";
+import { fetchEvidenceList } from "@/lib/api";
+import { sha256HexFromFile } from "@/lib/file-hash";
 
 const steps = ["General Info", "Custodian Details", "Upload & Hash", "Ledger Submission"];
+
+function buildNextCaseId(existingCaseIds: string[]): string {
+  const currentYear = new Date().getFullYear();
+  const prefix = `CASE-${currentYear}-`;
+  const sequences = existingCaseIds
+    .map((caseId) => {
+      const match = caseId.match(/^CASE-(\d{4})-(\d+)$/);
+      if (!match || match[1] !== String(currentYear)) return null;
+      return { value: Number(match[2]), width: match[2].length };
+    })
+    .filter((entry): entry is { value: number; width: number } => entry !== null);
+
+  if (sequences.length === 0) {
+    return `${prefix}001`;
+  }
+
+  const nextSequence = sequences.reduce((highest, entry) => {
+    if (entry.value > highest.value) return entry;
+    return highest;
+  });
+
+  const nextValue = nextSequence.value + 1;
+  const width = Math.max(3, nextSequence.width);
+  return `${prefix}${String(nextValue).padStart(width, "0")}`;
+}
 
 export default function RegisterEvidencePage() {
   const [step, setStep] = useState(0);
@@ -24,10 +51,11 @@ export default function RegisterEvidencePage() {
   const [isHashing, setIsHashing] = useState(false);
   const [calculatedHash, setCalculatedHash] = useState("");
   const [simulatedCid, setSimulatedCid] = useState("");
+  const [caseIdLoading, setCaseIdLoading] = useState(true);
 
   const [form, setForm] = useState({
     title: "",
-    caseId: "CASE-2026-041",
+    caseId: "",
     classification: "Restricted",
     notes: "",
     custodian: "Officer Robert Vance",
@@ -43,6 +71,25 @@ export default function RegisterEvidencePage() {
   const next = () => setStep((current) => Math.min(current + 1, steps.length - 1));
   const back = () => setStep((current) => Math.max(current - 1, 0));
 
+  useEffect(() => {
+    async function loadSuggestedCaseId() {
+      try {
+        setCaseIdLoading(true);
+        const response = await fetchEvidenceList({ limit: 1000 });
+        const suggestedCaseId = buildNextCaseId(response.items.map((item: any) => item.caseId).filter(Boolean));
+        setForm((current) => (current.caseId ? current : { ...current, caseId: suggestedCaseId }));
+      } catch (error) {
+        console.error("Failed to load next case ID:", error);
+        const fallbackCaseId = `CASE-${new Date().getFullYear()}-001`;
+        setForm((current) => (current.caseId ? current : { ...current, caseId: fallbackCaseId }));
+      } finally {
+        setCaseIdLoading(false);
+      }
+    }
+
+    loadSuggestedCaseId();
+  }, []);
+
   // Compute real SHA-256 hash using web crypto
   async function handleFileChange(selectedFiles: FileList | null) {
     if (!selectedFiles) return;
@@ -51,12 +98,7 @@ export default function RegisterEvidencePage() {
     setIsHashing(true);
 
     try {
-      // Hash first file for index fingerprinting
-      const buffer = await fileList[0].arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const sha256Hex = "0x" + hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-      
+      const sha256Hex = await sha256HexFromFile(fileList[0]);
       setCalculatedHash(sha256Hex);
 
       // Simulate IPFS CID
@@ -182,6 +224,7 @@ export default function RegisterEvidencePage() {
                     <input
                       value={form.caseId}
                       onChange={(e) => setForm({ ...form, caseId: e.target.value })}
+                      placeholder={caseIdLoading ? "Loading next case number..." : "CASE-2026-042"}
                       className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
                     />
                   </label>
@@ -433,4 +476,4 @@ function ChevronRightIcon({ className }: { className?: string }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
     </svg>
   );
-}
+}
