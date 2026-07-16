@@ -21,11 +21,14 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const evidenceRoutes = require("./routes/evidence");
 const statsRoutes = require("./routes/stats");
 const auditRoutes = require("./routes/audit");
+const walletRoutes = require("./routes/wallet");
+const chainSyncService = require("./services/chainSyncService");
 
 // Mount routes
 app.use("/api/evidence", evidenceRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/audit-logs", auditRoutes);
+app.use("/api/wallet", walletRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend Running");
@@ -47,3 +50,5 @@ console.log(
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+void chainSyncService.start();

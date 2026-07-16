@@ -121,24 +121,48 @@ export async function fetchEvidenceById(id: string) {
   return fetchJsonWithFallback(`${API_BASE_URL}/api/evidence/${id}`, `GET /api/evidence/${id}`, null);
 }
 
-export async function registerEvidence(formData: FormData) {
-  const response = await fetch(`${API_BASE_URL}/api/evidence`, {
+export async function prepareEvidenceRegistration(formData: FormData) {
+  const response = await fetch(`${API_BASE_URL}/api/evidence/prepare`, {
     method: "POST",
     headers: getHeaders(),
-    body: formData, // FormData contains file and other metadata fields. Content-Type is set automatically.
+    body: formData,
   });
+
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to register evidence record");
+    throw new Error(data.error || "Failed to prepare evidence registration");
   }
+
+  return response.json();
+}
+
+export async function finalizeEvidenceRegistration(payload: Record<string, any>) {
+  const response = await fetch(`${API_BASE_URL}/api/evidence/finalize`, {
+    method: "POST",
+    headers: {
+      ...getHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to finalize evidence registration");
+  }
+
   return response.json();
 }
 
 export type TransferPayload = {
   newCustodian: string;
+  newCustodianWallet: string;
+  previousCustodianWallet: string;
   department: string;
   reason: string;
   action: string;
+  txHash: string;
+  blockNumber: number;
 };
 
 export async function transferEvidence(id: string, payload: TransferPayload) {
@@ -214,4 +238,35 @@ export async function fetchAuditLogs(params: FetchAuditParams = {}) {
   });
 
   return fetchJsonWithFallback(`${API_BASE_URL}/api/audit-logs?${query.toString()}`, "GET /api/audit-logs", []);
+}
+
+export async function fetchLinkedWallet() {
+  const response = await fetch(`${API_BASE_URL}/api/wallet/me`, {
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    return "";
+  }
+
+  const data = await response.json();
+  return data.walletAddress || "";
+}
+
+export async function linkWalletAddress(walletAddress: string) {
+  const response = await fetch(`${API_BASE_URL}/api/wallet/link`, {
+    method: "POST",
+    headers: {
+      ...getHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ walletAddress }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to link wallet");
+  }
+
+  return response.json();
 }

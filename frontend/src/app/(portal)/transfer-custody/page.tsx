@@ -16,11 +16,14 @@ import {
 } from "lucide-react";
 import { transferRecipients } from "@/lib/dapp-data";
 import { fetchEvidenceList, transferEvidence } from "@/lib/api";
+import { ensureSepoliaNetwork, getRegistryReadContract, sendWalletSignedTransfer } from "@/lib/chain";
+import { useWallet, abbreviateWalletAddress } from "@/components/wallet-provider";
 import { useEffect } from "react";
 
 function TransferForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const wallet = useWallet();
   const idParam = searchParams.get("id");
 
   const [evidenceId, setEvidenceId] = useState(idParam || "");
@@ -31,6 +34,7 @@ function TransferForm() {
   const [status, setStatus] = useState<"idle" | "signing" | "broadcasting" | "confirmed">("idle");
   const [stepMsg, setStepMsg] = useState("");
   const [evidenceList, setEvidenceList] = useState<any[]>([]);
+  const [onChainEvidence, setOnChainEvidence] = useState<any>(null);
 
   useEffect(() => {
     async function loadEvidence() {
@@ -47,12 +51,44 @@ function TransferForm() {
     loadEvidence();
   }, [idParam]);
 
+  useEffect(() => {
+    async function loadOnChainEvidence() {
+      if (!evidenceId) return;
+
+      try {
+        const contract = await getRegistryReadContract();
+        const record = await contract.getEvidence(evidenceId);
+        setOnChainEvidence(record);
+      } catch (error) {
+        setOnChainEvidence(null);
+      }
+    }
+
+    void loadOnChainEvidence();
+  }, [evidenceId]);
+
   const selectedEvidence = useMemo(() => {
     if (!evidenceList || evidenceList.length === 0) return null;
     return evidenceList.find((item) => item.id === evidenceId) || evidenceList[0];
   }, [evidenceId, evidenceList]);
 
   const recipient = transferRecipients[recipientIndex];
+  const currentCustodianWallet =
+    selectedEvidence?.currentCustodianWallet ||
+    onChainEvidence?.currentCustodian ||
+    onChainEvidence?.[4] ||
+    "";
+  const creatorWallet =
+    selectedEvidence?.creatorWallet ||
+    onChainEvidence?.creatorWallet ||
+    onChainEvidence?.[8] ||
+    "";
+  const connectedWallet = wallet.connectedAddress;
+  const walletMatchesCustodian =
+    Boolean(connectedWallet) &&
+    Boolean(currentCustodianWallet) &&
+    connectedWallet.toLowerCase() === String(currentCustodianWallet).toLowerCase();
+  const canTransfer = walletMatchesCustodian && checkedAuth && Boolean(reason.trim()) && status === "idle";
 
   async function executeTransfer() {
     if (!reason.trim()) {
@@ -63,16 +99,31 @@ function TransferForm() {
       alert("Please check the digital signature authorization box.");
       return;
     }
+    if (!wallet.installed) {
+      alert("MetaMask is not installed.");
+      return;
+    }
+    if (!walletMatchesCustodian) {
+      alert("The connected wallet does not match the current custodian wallet.");
+      return;
+    }
 
     setStatus("signing");
     setStepMsg("Signing evidence custody transfer request...");
 
     try {
+      await ensureSepoliaNetwork();
+      const walletTx = await sendWalletSignedTransfer(evidenceId, recipient.wallet);
+
       await transferEvidence(evidenceId, {
         newCustodian: recipient.name,
+        newCustodianWallet: recipient.wallet,
+        previousCustodianWallet: currentCustodianWallet,
         department: recipient.department,
         reason: reason.trim(),
         action: `Transferred Custody to ${recipient.name}`,
+        txHash: walletTx.txHash,
+        blockNumber: walletTx.blockNumber,
       });
 
       setStatus("confirmed");
@@ -182,11 +233,52 @@ function TransferForm() {
                 <span className="text-slate-400 font-semibold">Current Holder</span>
                 <span className="font-semibold text-slate-900">{selectedEvidence?.custodian || "N/A"}</span>
               </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-400 font-semibold">Current Wallet</span>
+                  <span className="font-mono text-slate-900 text-[10px] truncate" title={currentCustodianWallet || ""}>
+                    {currentCustodianWallet ? abbreviateWalletAddress(String(currentCustodianWallet)) : "Unlinked"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-400 font-semibold">Creator Wallet</span>
+                  <span className="font-mono text-slate-900 text-[10px] truncate" title={creatorWallet || ""}>
+                    {creatorWallet ? abbreviateWalletAddress(String(creatorWallet)) : "Unknown"}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-400 font-semibold">Connected Wallet</span>
+                  <span className="font-mono text-slate-900 text-[10px] truncate" title={connectedWallet || ""}>
+                    {connectedWallet ? abbreviateWalletAddress(connectedWallet) : "Not connected"}
+                  </span>
+                </div>
               <div className="flex justify-between">
                 <span className="text-slate-400 font-semibold">Handoff Target</span>
                 <span className="font-semibold text-slate-900">{recipient.name}</span>
               </div>
             </div>
+
+              {!wallet.installed && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] font-semibold text-amber-800">
+                  MetaMask is not installed. Install the extension to sign custody transfers locally.
+                </div>
+              )}
+
+              {wallet.installed && !wallet.isConnected && (
+                <button
+                  type="button"
+                  onClick={() => void wallet.connectWallet()}
+                  className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
+                >
+                  <Send className="h-4 w-4" />
+                  <span>Connect MetaMask Wallet</span>
+                </button>
+              )}
+
+              {wallet.installed && wallet.isConnected && !walletMatchesCustodian && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] font-semibold text-rose-800">
+                  The connected wallet must match the current custodian wallet to transfer this evidence.
+                </div>
+              )}
 
             {/* Auth checkbox */}
             <div className="space-y-3">
@@ -223,10 +315,11 @@ function TransferForm() {
               <button
                 type="button"
                 onClick={executeTransfer}
-                className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+                disabled={!canTransfer}
+                className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
-                <span>Execute Transfer Handoff</span>
+                <span>{walletMatchesCustodian ? "Execute Transfer Handoff" : "Connect Custodian Wallet"}</span>
               </button>
             ) : (
               <div className="border border-slate-200 rounded-xl bg-slate-50 p-4 text-center space-y-3">
@@ -273,4 +366,4 @@ export default function TransferCustodyPage() {
       <TransferForm />
     </Suspense>
   );
-}
+}

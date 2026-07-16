@@ -14,9 +14,14 @@ import {
   ArrowLeft,
   Hash,
 } from "lucide-react";
-import { registerEvidence } from "@/lib/api";
-import { fetchEvidenceList } from "@/lib/api";
+import {
+  fetchEvidenceList,
+  finalizeEvidenceRegistration,
+  prepareEvidenceRegistration,
+} from "@/lib/api";
+import { ensureSepoliaNetwork, sendWalletSignedRegistration } from "@/lib/chain";
 import { sha256HexFromFile } from "@/lib/file-hash";
+import { useWallet, abbreviateWalletAddress } from "@/components/wallet-provider";
 
 const steps = ["General Info", "Custodian Details", "Upload & Hash", "Ledger Submission"];
 
@@ -46,6 +51,7 @@ function buildNextCaseId(existingCaseIds: string[]): string {
 }
 
 export default function RegisterEvidencePage() {
+  const wallet = useWallet();
   const [step, setStep] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
   const [isHashing, setIsHashing] = useState(false);
@@ -125,28 +131,56 @@ export default function RegisterEvidencePage() {
       alert("Please upload at least one file to hash before submission.");
       return;
     }
+    if (!wallet.installed) {
+      alert("MetaMask is not installed.");
+      return;
+    }
+    if (!wallet.connectedAddress) {
+      alert("Please connect your MetaMask wallet before registering evidence.");
+      return;
+    }
 
     setTxState("submitting");
-    setTxMsg("Uploading file bundle and anchoring hash fingerprint...");
+    setTxMsg("Preparing payload and waiting for MetaMask signature...");
 
     try {
+      await ensureSepoliaNetwork();
+
       const formData = new FormData();
       formData.append("file", files[0]);
-      formData.append("title", form.title);
-      formData.append("caseId", form.caseId);
-      formData.append("classification", form.classification);
-      formData.append("notes", form.notes);
-      formData.append("custodian", form.custodian);
-      formData.append("location", form.location);
-      formData.append("department", form.department);
-      formData.append("type", files[0].name.split(".").pop()?.toUpperCase() + " File" || "Digital Evidence");
 
-      const response = await registerEvidence(formData);
+      const prepared = await prepareEvidenceRegistration(formData);
+      const walletTx = await sendWalletSignedRegistration(
+        prepared.evidenceId,
+        form.caseId,
+        prepared.fileHash,
+        prepared.ipfsCid,
+      );
+
+      const response = await finalizeEvidenceRegistration({
+        evidenceId: prepared.evidenceId,
+        title: form.title,
+        caseId: form.caseId,
+        classification: form.classification,
+        notes: form.notes,
+        custodian: form.custodian,
+        location: form.location,
+        department: form.department,
+        type: files[0].name.split(".").pop()?.toUpperCase() + " File" || "Digital Evidence",
+        fileHash: prepared.fileHash,
+        ipfsCid: prepared.ipfsCid,
+        filePath: prepared.gatewayUrl,
+        fileName: prepared.fileName,
+        fileSize: prepared.fileSize,
+        txHash: walletTx.txHash,
+        blockNumber: walletTx.blockNumber,
+        creatorWallet: wallet.connectedAddress,
+      });
 
       setTxState("confirmed");
       setMinedBlock("Verified Block");
       setMinedHash(response.txHash || "0xSimulatedTxHash");
-      setTxMsg("Evidence successfully registered and anchored on the ledger!");
+      setTxMsg("Evidence successfully registered and anchored on the ledger by the connected wallet!");
     } catch (err: any) {
       console.error(err);
       setTxState("idle");
@@ -385,6 +419,15 @@ export default function RegisterEvidencePage() {
                   <Cpu className="h-5 w-5 text-blue-600 animate-spin mx-auto" />
                   <p className="text-xs font-semibold text-slate-800">Anchoring Registry Ledger Node</p>
                   <p className="text-[10px] text-slate-500 italic">{txMsg}</p>
+                </div>
+              )}
+
+              {wallet.connectedAddress && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-600 space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-slate-500 uppercase text-[10px]">Connected Wallet</span>
+                    <span className="font-mono text-slate-800">{abbreviateWalletAddress(wallet.connectedAddress)}</span>
+                  </div>
                 </div>
               )}
 

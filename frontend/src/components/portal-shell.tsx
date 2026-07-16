@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { abbreviateWalletAddress, useWallet } from "@/components/wallet-provider";
 import { portalRoutes } from "@/lib/dapp-data";
 
 const iconByLabel: Record<string, any> = {
@@ -42,6 +43,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, logout } = useAuth();
+  const wallet = useWallet();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -166,6 +168,34 @@ export function PortalShell({ children }: { children: ReactNode }) {
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-blue-600" />
             </button>
+
+            <div className="hidden lg:flex items-center gap-2">
+              {wallet.isConnected ? (
+                <>
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span>{abbreviateWalletAddress(wallet.connectedAddress)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void wallet.disconnectWallet()}
+                    disabled={wallet.disconnecting}
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                  >
+                    {wallet.disconnecting ? "Disconnecting..." : "Disconnect Wallet"}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void wallet.connectWallet()}
+                  disabled={!wallet.installed || wallet.connecting}
+                  className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition disabled:opacity-50"
+                >
+                  {wallet.connecting ? "Connecting..." : wallet.installed ? "Connect Wallet" : "Install MetaMask"}
+                </button>
+              )}
+            </div>
 
             {/* Network Badge */}
             <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/60 px-2.5 py-0.5 text-xs font-semibold text-blue-700">

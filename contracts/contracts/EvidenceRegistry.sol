@@ -38,6 +38,7 @@ contract EvidenceRegistry is AccessControl {
         string caseId;
         string fileHash;
         string ipfsCid;
+        address creatorWallet;
         address currentCustodian;
         Status status;
         uint256 registeredAt;
@@ -54,15 +55,14 @@ contract EvidenceRegistry is AccessControl {
         string caseId,
         string fileHash,
         string ipfsCid,
-        address indexed registeredBy,
+        address indexed creatorWallet,
         uint256 timestamp
     );
 
     event CustodyTransferred(
         string indexed evidenceId,
-        address indexed from,
-        address indexed to,
-        string action,
+        address indexed previousCustodian,
+        address indexed newCustodian,
         uint256 timestamp
     );
 
@@ -97,7 +97,7 @@ contract EvidenceRegistry is AccessControl {
         string memory _caseId,
         string memory _fileHash,
         string memory _ipfsCid
-    ) external onlyRole(OFFICER_ROLE) {
+    ) external {
         require(
             !evidenceRegistry[_evidenceId].exists,
             "Evidence already registered"
@@ -113,6 +113,7 @@ contract EvidenceRegistry is AccessControl {
             caseId: _caseId,
             fileHash: _fileHash,
             ipfsCid: _ipfsCid,
+            creatorWallet: msg.sender,
             currentCustodian: msg.sender,
             status: Status.Registered,
             registeredAt: block.timestamp,
@@ -146,17 +147,12 @@ contract EvidenceRegistry is AccessControl {
      */
     function transferCustody(
         string memory _evidenceId,
-        address _newCustodian,
-        string memory _action
+        address _newCustodian
     ) external {
         Evidence storage evidence = evidenceRegistry[_evidenceId];
         require(evidence.exists, "Evidence not found");
         require(_newCustodian != address(0), "Invalid recipient address");
-        require(
-            msg.sender == evidence.currentCustodian ||
-                hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "Not authorized to transfer"
-        );
+        require(msg.sender == evidence.currentCustodian, "Only current custodian can transfer evidence");
 
         address previousCustodian = evidence.currentCustodian;
 
@@ -169,7 +165,7 @@ contract EvidenceRegistry is AccessControl {
                 from: previousCustodian,
                 to: _newCustodian,
                 timestamp: block.timestamp,
-                action: _action,
+                action: "TRANSFERRED",
                 statusAtTransfer: evidence.status
             })
         );
@@ -178,7 +174,6 @@ contract EvidenceRegistry is AccessControl {
             _evidenceId,
             previousCustodian,
             _newCustodian,
-            _action,
             block.timestamp
         );
     }

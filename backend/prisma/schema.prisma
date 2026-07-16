@@ -12,6 +12,7 @@ model User {
   username  String   @unique
   email     String   @unique
   role      String
+  walletAddress String? @unique
   createdAt DateTime @default(now())
 }
 
@@ -31,7 +32,10 @@ model Evidence {
   filePath       String         // Path where the file is stored locally
   fileName       String
   fileSize       Int
+  creatorWallet  String         @default("")
+  currentCustodianWallet String @default("")
   txHash         String         @default("")
+  blockNumber    Int?
   uploadedBy     String         // Email of the uploading user
   uploadedAt     DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -61,6 +65,9 @@ model AuditLog {
   status     String
   evidenceId String   @default("")
   txHash     String   @default("")
+  previousWallet String @default("")
+  newWallet      String @default("")
+  blockNumber    Int?
   detail     String
   ipAddress  String   @default("")
 }

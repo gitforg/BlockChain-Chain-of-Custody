@@ -19,7 +19,6 @@ import {
   Ban,
 } from "lucide-react";
 import { fetchEvidenceById, disposeEvidence, destroyEvidence } from "@/lib/api";
-import { QrCode } from "@/components/qr-code";
 
 type EvidenceDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -118,6 +117,18 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
       window.print();
     }
   };
+
+  const explorerTxUrl = evidence?.txHash
+    ? `https://sepolia.etherscan.io/tx/${evidence.txHash}`
+    : "";
+
+  const evidenceImageUrl = evidence?.filePath || "";
+  const evidenceFileName = evidence?.fileName || "";
+  const isImageEvidence =
+    /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(evidenceFileName) ||
+    /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(evidenceImageUrl) ||
+    evidence?.type?.toLowerCase().includes("image") ||
+    evidenceFileName.toLowerCase().includes("whatsapp image");
 
   if (loading) {
     return (
@@ -233,6 +244,18 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
                 <span className="block text-[10px] font-semibold text-slate-400 uppercase">Current Custodian</span>
                 <span className="mt-1 block text-sm font-semibold text-slate-900">{evidence.custodian}</span>
               </div>
+              <div>
+                <span className="block text-[10px] font-semibold text-slate-400 uppercase">Current Custodian Wallet</span>
+                <span className="mt-1 block font-mono text-[10px] text-slate-700 break-all">{evidence.currentCustodianWallet || "Not linked"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-semibold text-slate-400 uppercase">Creator Wallet</span>
+                <span className="mt-1 block font-mono text-[10px] text-slate-700 break-all">{evidence.creatorWallet || "Not linked"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-semibold text-slate-400 uppercase">Block Number</span>
+                <span className="mt-1 block text-sm font-semibold text-slate-900">{evidence.blockNumber || "Pending"}</span>
+              </div>
             </div>
 
             <div>
@@ -285,8 +308,53 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
 
         {/* Side panels */}
         <aside className="space-y-6">
-          {/* QR Code and anchors */}
-          <QrCode value={`${evidence.id}:${evidence.txHash}`} label={`Evidence: ${evidence.id}`} />
+          {/* Evidence Image */}
+          <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-4 print:shadow-none print:border-slate-300">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Evidence Image</h3>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase">Included in report</span>
+            </div>
+
+            {isImageEvidence ? (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
+                <img
+                  src={evidenceImageUrl}
+                  alt={`Evidence preview for ${evidence.id}`}
+                  className="h-52 w-full rounded-lg object-contain print:h-44"
+                  loading="lazy"
+                  crossOrigin="anonymous"
+                />
+              </div>
+            ) : (
+              <div className="flex h-52 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center print:h-44">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-700">No image preview available</p>
+                  <p className="text-xs text-slate-500">
+                    The stored evidence file is not an image, so the report will show metadata only.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2 text-xs text-slate-600">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-400 uppercase text-[10px] font-semibold">File Name</span>
+                <span className="font-medium text-slate-800 truncate">{evidence.fileName}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-400 uppercase text-[10px] font-semibold">Storage Path</span>
+                <a
+                  href={evidenceImageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-blue-600 truncate hover:underline"
+                  title={evidenceImageUrl}
+                >
+                  View source
+                </a>
+              </div>
+            </div>
+          </section>
 
           {/* Cryptographic Identifiers */}
           <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-5">
@@ -329,9 +397,19 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
                 <span className="block text-[10px] font-semibold text-slate-400 uppercase">Ledger Confirmation Signature</span>
                 <div className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-slate-800">
                   <Compass className="h-4 w-4 text-blue-600" />
-                  <span>Anchor Block: Verified on Node</span>
+                  <span>Anchor Block: {evidence.blockNumber || "Pending"}</span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Digital signing completed by Officer Vance on node connection.</p>
+                {explorerTxUrl && (
+                  <a
+                    href={explorerTxUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex text-[10px] font-semibold text-blue-600 hover:underline"
+                  >
+                    View transaction on Sepolia Etherscan
+                  </a>
+                )}
               </div>
             </div>
           </section>
@@ -399,4 +477,4 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
       </div>
     </div>
   );
-}
+}
