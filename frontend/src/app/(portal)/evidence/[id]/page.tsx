@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -22,10 +22,11 @@ import { fetchEvidenceById, disposeEvidence, destroyEvidence } from "@/lib/api";
 import { QrCode } from "@/components/qr-code";
 
 type EvidenceDetailPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) {
+  const { id } = use(params);
   const router = useRouter();
   const [evidence, setEvidence] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
     if (!confirm("Are you sure you want to legally dispose of this evidence? This action will be permanently recorded on the blockchain.")) return;
     try {
       setSubmittingDisposal(true);
-      const updated = await disposeEvidence(params.id);
+      const updated = await disposeEvidence(id);
       setEvidence(updated);
       alert("Evidence successfully marked as Disposed on the registry and blockchain!");
     } catch (err: any) {
@@ -56,7 +57,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
     if (!confirm("CRITICAL WARNING: This will completely destroy the digital evidence record from the SQL database and unpin it from IPFS. This action is irreversible. Are you sure you want to proceed?")) return;
     try {
       setSubmittingDestruction(true);
-      await destroyEvidence(params.id);
+      await destroyEvidence(id);
       alert("Evidence record and IPFS payload successfully destroyed!");
       router.push("/evidence");
     } catch (err: any) {
@@ -72,7 +73,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchEvidenceById(params.id);
+        const data = await fetchEvidenceById(id);
         setEvidence(data);
         setHashInput(data.fileHash || "");
       } catch (err: any) {
@@ -83,7 +84,7 @@ export default function EvidenceDetailPage({ params }: EvidenceDetailPageProps) 
       }
     }
     loadData();
-  }, [params.id]);
+  }, [id]);
 
   const isMatch = useMemo(
     () => {
