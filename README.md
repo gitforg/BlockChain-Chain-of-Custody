@@ -1,6 +1,6 @@
 # Block-Chain-of-Custody
 
-# Blockchain Chain of Custody
+
 
 A prototype blockchain-based digital evidence management system that helps register, store, and track digital evidence securely. The project demonstrates how Blockchain, IPFS, PostgreSQL, and Firebase Authentication can be combined to maintain the integrity and traceability of evidence throughout its lifecycle.
 
@@ -14,12 +14,10 @@ A prototype blockchain-based digital evidence management system that helps regis
 - Evidence registration
 - SHA-256 hash generation for uploaded evidence
 - Decentralized file storage using Pinata (IPFS)
-- PostgreSQL database integration
 - Blockchain-based evidence registration
 - Chain of Custody tracking
 - Evidence search and filtering
 - Dashboard with evidence statistics
-- QR Code generation for evidence verification
 - MetaMask wallet integration (work in progress)
 
 ---
