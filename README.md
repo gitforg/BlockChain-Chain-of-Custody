@@ -1,4 +1,4 @@
-# Block-Chain-of-Custody
+# BlockChain-Chain-of-Custody
 
 
 
@@ -70,7 +70,7 @@ Block-Chain-of-Custody/
 Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/Block-Chain-of-Custody.git
+git clone https://github.com/gitforg/BlockChain-Chain-of-Custody.git
 ```
 
 Go to the project folder
