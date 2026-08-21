@@ -32,27 +32,27 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       {/* Header section */}
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border border-slate-200 bg-white p-6 rounded-2xl shadow-xs">
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border border-zinc-800 bg-zinc-900/40 p-6 rounded-md">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Administration</p>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Administration</p>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
             System Settings
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-zinc-500">
             Manage your administrative profile, blockchain node provider, IPFS storage directories, and app alert configurations.
           </p>
         </div>
 
         <button
           onClick={handleSave}
-          className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-600 px-5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+          className="inline-flex h-10 items-center justify-center rounded bg-cyan-600 px-5 text-xs font-semibold text-white hover:bg-cyan-500 transition"
         >
           Save Configuration
         </button>
       </section>
 
       {successMsg && (
-        <div className="rounded-xl border border-emerald-250 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 font-semibold flex items-center gap-2">
+        <div className="rounded border border-emerald-250 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200 font-semibold flex items-center gap-2">
           <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />
           <span>{successMsg}</span>
         </div>
@@ -61,28 +61,28 @@ export default function SettingsPage() {
       {/* Settings Sections Grid */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Section 1: Admin Information */}
-        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <User className="h-4.5 w-4.5 text-blue-600" />
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Admin Profile</h2>
+        <section className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-4">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+            <User className="h-4.5 w-4.5 text-cyan-400" />
+            <h2 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">Admin Profile</h2>
           </div>
 
           <div className="grid gap-4 text-xs">
             <div>
-              <span className="block text-[10px] font-semibold text-slate-400 uppercase">Administrator Email</span>
-              <span className="mt-1 block font-semibold text-slate-900">{user?.email || "admin@company.com"}</span>
+              <span className="block text-[10px] font-semibold text-zinc-600 uppercase">Administrator Email</span>
+              <span className="mt-1 block font-semibold text-zinc-100">{user?.email || "admin@company.com"}</span>
             </div>
             <div>
-              <span className="block text-[10px] font-semibold text-slate-400 uppercase">Designated Role</span>
-              <span className="mt-1 block font-semibold text-slate-900">System Compliance Lead</span>
+              <span className="block text-[10px] font-semibold text-zinc-600 uppercase">Designated Role</span>
+              <span className="mt-1 block font-semibold text-zinc-100">System Compliance Lead</span>
             </div>
             <div>
-              <span className="block text-[10px] font-semibold text-slate-400 uppercase">Department Assignment</span>
-              <span className="mt-1 block font-semibold text-slate-900">Federal Records Administration</span>
+              <span className="block text-[10px] font-semibold text-zinc-600 uppercase">Department Assignment</span>
+              <span className="mt-1 block font-semibold text-zinc-100">Federal Records Administration</span>
             </div>
             <div>
-              <span className="block text-[10px] font-semibold text-slate-400 uppercase">Active Credentials Status</span>
-              <div className="mt-1.5 flex items-center gap-1.5 text-emerald-700 font-semibold">
+              <span className="block text-[10px] font-semibold text-zinc-600 uppercase">Active Credentials Status</span>
+              <div className="mt-1.5 flex items-center gap-1.5 text-emerald-300 font-semibold">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 <span>Security Token Verified</span>
               </div>
@@ -91,56 +91,56 @@ export default function SettingsPage() {
         </section>
 
         {/* Section 2: Blockchain Configuration */}
-        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <Cpu className="h-4.5 w-4.5 text-blue-600" />
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Blockchain Node</h2>
+        <section className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-4">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+            <Cpu className="h-4.5 w-4.5 text-cyan-400" />
+            <h2 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">Blockchain Node</h2>
           </div>
 
           <div className="space-y-3.5 text-xs">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase">RPC Provider Gateway URL</label>
+              <label className="block text-[10px] font-semibold text-zinc-600 uppercase">RPC Provider Gateway URL</label>
               <input
                 type="text"
                 value={rpcUrl}
                 onChange={(e) => setRpcUrl(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+                className="mt-1.5 w-full rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-cyan-500 focus:bg-zinc-900 transition"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase">EvidenceRegistry Contract Address</label>
+              <label className="block text-[10px] font-semibold text-zinc-600 uppercase">EvidenceRegistry Contract Address</label>
               <input
                 type="text"
                 value={registryAddress}
                 onChange={(e) => setRegistryAddress(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-mono text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+                className="mt-1.5 w-full rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs font-mono text-zinc-200 outline-none focus:border-cyan-500 focus:bg-zinc-900 transition"
               />
             </div>
           </div>
         </section>
 
         {/* Section 3: IPFS Settings */}
-        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <Server className="h-4.5 w-4.5 text-blue-600" />
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">IPFS Directory Settings</h2>
+        <section className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-4">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+            <Server className="h-4.5 w-4.5 text-cyan-400" />
+            <h2 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">IPFS Directory Settings</h2>
           </div>
 
           <div className="space-y-3.5 text-xs">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Public Gateway URL</label>
+              <label className="block text-[10px] font-semibold text-zinc-600 uppercase">Public Gateway URL</label>
               <input
                 type="text"
                 value={ipfsGateway}
                 onChange={(e) => setIpfsGateway(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+                className="mt-1.5 w-full rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-cyan-500 focus:bg-zinc-900 transition"
               />
             </div>
 
             <div>
-              <span className="block text-[10px] font-semibold text-slate-400 uppercase">Storage Provider Pinning API</span>
-              <span className="mt-1.5 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
+              <span className="block text-[10px] font-semibold text-zinc-600 uppercase">Storage Provider Pinning API</span>
+              <span className="mt-1.5 inline-flex rounded-full border border-zinc-800 bg-zinc-900/40 px-2.5 py-0.5 text-[10px] font-semibold text-zinc-400">
                 Pinata IPFS Endpoint (Active)
               </span>
             </div>
@@ -148,88 +148,88 @@ export default function SettingsPage() {
         </section>
 
         {/* Section 4: Firebase Integration */}
-        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <Database className="h-4.5 w-4.5 text-blue-600" />
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Firebase Sync Configuration</h2>
+        <section className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-4">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+            <Database className="h-4.5 w-4.5 text-cyan-400" />
+            <h2 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">Firebase Sync Configuration</h2>
           </div>
 
           <div className="space-y-4 text-xs">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+            <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-slate-450 font-medium">Authentication State</span>
-                <span className="text-emerald-700 font-bold">Operational</span>
+                <span className="text-zinc-500 font-medium">Authentication State</span>
+                <span className="text-emerald-300 font-bold">Operational</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-450 font-medium">Session Persistence</span>
-                <span className="font-semibold text-slate-800">Local Browser persistence</span>
+                <span className="text-zinc-500 font-medium">Session Persistence</span>
+                <span className="font-semibold text-zinc-200">Local Browser persistence</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-450 font-medium">API Integration</span>
-                <span className="font-semibold text-slate-800">Active</span>
+                <span className="text-zinc-500 font-medium">API Integration</span>
+                <span className="font-semibold text-zinc-200">Active</span>
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-100 p-3 bg-slate-50/50 flex items-start gap-2 text-[10px] text-slate-500 leading-relaxed">
-              <Lock className="h-4.5 w-4.5 text-blue-600 shrink-0" />
+            <div className="rounded-lg border border-zinc-800 p-3 bg-zinc-800/40 flex items-start gap-2 text-[10px] text-zinc-500 leading-relaxed">
+              <Lock className="h-4.5 w-4.5 text-cyan-400 shrink-0" />
               <span>Firebase credentials configured in .env.local are read client-side on bootstrap initialize hooks. No manual sync needed.</span>
             </div>
           </div>
         </section>
 
         {/* Section 5: Notifications Alert */}
-        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <Bell className="h-4.5 w-4.5 text-blue-600" />
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Operational Alerts</h2>
+        <section className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-4">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+            <Bell className="h-4.5 w-4.5 text-cyan-400" />
+            <h2 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">Operational Alerts</h2>
           </div>
 
           <div className="space-y-3.5 text-xs">
-            <label className="flex items-center justify-between gap-3 cursor-pointer py-1 border-b border-slate-50">
-              <span className="text-slate-700 font-semibold">Email Alerts for Handovers</span>
+            <label className="flex items-center justify-between gap-3 cursor-pointer py-1 border-b border-zinc-800">
+              <span className="text-zinc-300 font-semibold">Email Alerts for Handovers</span>
               <input
                 type="checkbox"
                 checked={emailAlerts}
                 onChange={(e) => setEmailAlerts(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-zinc-700 text-cyan-400 focus:ring-cyan-500"
               />
             </label>
 
             <label className="flex items-center justify-between gap-3 cursor-pointer py-1">
-              <span className="text-slate-700 font-semibold">Immediate push notifications</span>
+              <span className="text-zinc-300 font-semibold">Immediate push notifications</span>
               <input
                 type="checkbox"
                 checked={pushAlerts}
                 onChange={(e) => setPushAlerts(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-zinc-700 text-cyan-400 focus:ring-cyan-500"
               />
             </label>
           </div>
         </section>
 
         {/* Section 6: System Information */}
-        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <Monitor className="h-4.5 w-4.5 text-blue-600" />
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">System Information</h2>
+        <section className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-4">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+            <Monitor className="h-4.5 w-4.5 text-cyan-400" />
+            <h2 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">System Information</h2>
           </div>
 
-          <div className="grid gap-3.5 text-xs text-slate-650">
+          <div className="grid gap-3.5 text-xs text-zinc-400">
             <div className="flex justify-between">
               <span>Framework Version</span>
-              <span className="font-bold text-slate-900">Next.js 16.2.9 (App Router)</span>
+              <span className="font-bold text-zinc-100">Next.js 16.2.9 (App Router)</span>
             </div>
             <div className="flex justify-between">
               <span>Styling Architecture</span>
-              <span className="font-bold text-slate-900">Tailwind CSS 4.0</span>
+              <span className="font-bold text-zinc-100">Tailwind CSS 4.0</span>
             </div>
             <div className="flex justify-between">
               <span>Smart Contract Library</span>
-              <span className="font-bold text-slate-900">Ethers.js v6</span>
+              <span className="font-bold text-zinc-100">Ethers.js v6</span>
             </div>
             <div className="flex justify-between">
               <span>MetaMask Client SDK</span>
-              <span className="font-bold text-slate-900">Installed / Connected</span>
+              <span className="font-bold text-zinc-100">Installed / Connected</span>
             </div>
           </div>
         </section>

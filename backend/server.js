@@ -22,6 +22,7 @@ const evidenceRoutes = require("./routes/evidence");
 const statsRoutes = require("./routes/stats");
 const auditRoutes = require("./routes/audit");
 const walletRoutes = require("./routes/wallet");
+const healthRoutes = require("./routes/health");
 const chainSyncService = require("./services/chainSyncService");
 
 // Mount routes
@@ -29,6 +30,7 @@ app.use("/api/evidence", evidenceRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/wallet", walletRoutes);
+app.use("/api/health", healthRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend Running");

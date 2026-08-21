@@ -12,11 +12,38 @@ const blockchainService = require("../services/blockchainService");
 const ipfsService = require("../services/ipfsService");
 const chainSyncService = require("../services/chainSyncService");
 
+/**
+ * Allocates the next free evidence ID.
+ *
+ * Derived from the highest existing sequence rather than the row count: on-chain
+ * registrations are permanent, so reusing a number freed by a deleted row would
+ * make the contract revert with "Evidence already registered" forever. Each
+ * candidate is checked against the database *and* the chain before being issued.
+ */
 async function getNextEvidenceId() {
   const year = new Date().getFullYear();
-  const count = await prisma.evidence.count();
-  const nextSeq = String(count + 1).padStart(4, "0");
-  return `EV-${year}-${nextSeq}`;
+  const prefix = `EV-${year}-`;
+
+  const existing = await prisma.evidence.findMany({
+    where: { id: { startsWith: prefix } },
+    select: { id: true },
+  });
+
+  const taken = new Set(existing.map((row) => row.id));
+  const highest = existing.reduce((max, row) => {
+    const match = row.id.match(/^EV-\d{4}-(\d+)$/);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+
+  // Walk forward until an ID is free both locally and on-chain.
+  for (let sequence = highest + 1; sequence <= highest + 1000; sequence += 1) {
+    const candidate = `${prefix}${String(sequence).padStart(4, "0")}`;
+    if (taken.has(candidate)) continue;
+    if (await chainSyncService.isEvidenceRegisteredOnChain(candidate)) continue;
+    return candidate;
+  }
+
+  throw new Error("Unable to allocate a free evidence ID after 1000 attempts");
 }
 
 // Multer Storage Configuration
@@ -230,29 +257,35 @@ router.post("/finalize", async (req, res) => {
 
     const onChainCreator = String(matchedEvent.args?.creatorWallet || matchedEvent.args?.[4] || creatorWallet || "");
 
-    const evidence = await prisma.evidence.create({
-      data: {
-        id: evidenceId,
-        title,
-        caseId,
-        type,
-        classification,
-        notes,
-        custodian,
-        location,
-        department,
-        status: "Registered",
-        fileHash,
-        ipfsCid,
-        filePath: filePath || `https://gateway.pinata.cloud/ipfs/${ipfsCid}`,
-        fileName: fileName || `${evidenceId}.bin`,
-        fileSize: Number(fileSize || 0),
-        creatorWallet: onChainCreator,
-        currentCustodianWallet: onChainCreator,
-        txHash,
-        blockNumber: Number(receipt.blockNumber || blockNumber || 0),
-        uploadedBy: userEmail,
-      },
+    const record = {
+      title,
+      caseId,
+      type,
+      classification,
+      notes,
+      custodian,
+      location,
+      department,
+      status: "Registered",
+      fileHash,
+      ipfsCid,
+      filePath: filePath || `https://gateway.pinata.cloud/ipfs/${ipfsCid}`,
+      fileName: fileName || `${evidenceId}.bin`,
+      fileSize: Number(fileSize || 0),
+      creatorWallet: onChainCreator,
+      currentCustodianWallet: onChainCreator,
+      txHash,
+      blockNumber: Number(receipt.blockNumber || blockNumber || 0),
+      uploadedBy: userEmail,
+    };
+
+    // Upsert rather than create: the chain event listener may have already
+    // written a placeholder row for this transaction. Whoever arrives second
+    // fills in the full metadata instead of failing on the unique id.
+    const evidence = await prisma.evidence.upsert({
+      where: { id: evidenceId },
+      create: { id: evidenceId, ...record },
+      update: record,
     });
 
     // 6. Create initial CustodyEvent
@@ -588,3 +621,5 @@ router.post("/:id/destroy", async (req, res) => {
 });
 
 module.exports = router;
+// Exported so the ID-allocation invariant can be tested directly.
+module.exports.getNextEvidenceId = getNextEvidenceId;
