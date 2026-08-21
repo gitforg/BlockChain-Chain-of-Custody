@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { transferRecipients } from "@/lib/dapp-data";
 import { fetchEvidenceList, transferEvidence } from "@/lib/api";
-import { ensureSepoliaNetwork, getRegistryReadContract, sendWalletSignedTransfer } from "@/lib/chain";
+import { describeWalletError, ensureTargetNetwork, getRegistryReadContract, sendWalletSignedTransfer } from "@/lib/chain";
 import { useWallet, abbreviateWalletAddress } from "@/components/wallet-provider";
 import { useEffect } from "react";
 
@@ -33,6 +33,7 @@ function TransferForm() {
   const [checkedAuth, setCheckedAuth] = useState(false);
   const [status, setStatus] = useState<"idle" | "signing" | "broadcasting" | "confirmed">("idle");
   const [stepMsg, setStepMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [evidenceList, setEvidenceList] = useState<any[]>([]);
   const [onChainEvidence, setOnChainEvidence] = useState<any>(null);
 
@@ -91,20 +92,22 @@ function TransferForm() {
   const canTransfer = walletMatchesCustodian && checkedAuth && Boolean(reason.trim()) && status === "idle";
 
   async function executeTransfer() {
+    setErrorMsg("");
+
     if (!reason.trim()) {
-      alert("Please state the reason for custody transfer.");
+      setErrorMsg("Please state the reason for this custody transfer.");
       return;
     }
     if (!checkedAuth) {
-      alert("Please check the digital signature authorization box.");
+      setErrorMsg("Please tick the digital signature authorization box before transferring.");
       return;
     }
     if (!wallet.installed) {
-      alert("MetaMask is not installed.");
+      setErrorMsg("MetaMask was not detected. Install the extension, reload this page, then try again.");
       return;
     }
     if (!walletMatchesCustodian) {
-      alert("The connected wallet does not match the current custodian wallet.");
+      setErrorMsg("The connected wallet does not match the current custodian wallet for this evidence.");
       return;
     }
 
@@ -112,7 +115,7 @@ function TransferForm() {
     setStepMsg("Signing evidence custody transfer request...");
 
     try {
-      await ensureSepoliaNetwork();
+      await ensureTargetNetwork();
       const walletTx = await sendWalletSignedTransfer(evidenceId, recipient.wallet);
 
       await transferEvidence(evidenceId, {
@@ -132,7 +135,7 @@ function TransferForm() {
       console.error(err);
       setStatus("idle");
       setStepMsg("");
-      alert(err.message || "Failed to execute transfer.");
+      setErrorMsg(describeWalletError(err) || "Failed to execute transfer.");
     }
   }
 
@@ -140,21 +143,21 @@ function TransferForm() {
     <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
       {/* Input panel */}
       <section className="space-y-6">
-        <article className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-5">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Custody Handover Handoff</h2>
+        <article className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-5">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+            <Users className="h-5 w-5 text-cyan-400" />
+            <h2 className="text-sm font-bold text-zinc-100 uppercase tracking-wider">Custody Handover Handoff</h2>
           </div>
 
           <div className="space-y-4">
             {/* Select Target Evidence */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Target Evidence ID</label>
+              <label className="block text-[10px] font-semibold text-zinc-600 uppercase">Target Evidence ID</label>
               <select
                 value={evidenceId}
                 onChange={(e) => setEvidenceId(e.target.value)}
                 disabled={status !== "idle"}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition"
+                className="mt-1.5 w-full rounded border border-zinc-800 bg-zinc-900/40 px-3.5 py-2.5 text-xs font-semibold text-zinc-300 outline-none focus:border-cyan-500 focus:bg-zinc-900 transition"
               >
                 {evidenceList.length > 0 ? (
                   evidenceList.map((item) => (
@@ -170,7 +173,7 @@ function TransferForm() {
 
             {/* Select Recipient */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-2">Select Recipient Custodian</label>
+              <label className="block text-[10px] font-semibold text-zinc-600 uppercase mb-2">Select Recipient Custodian</label>
               <div className="grid gap-3">
                 {transferRecipients.map((entry, index) => {
                   const active = recipientIndex === index;
@@ -181,18 +184,18 @@ function TransferForm() {
                       type="button"
                       disabled={status !== "idle"}
                       onClick={() => setRecipientIndex(index)}
-                      className={`w-full rounded-xl border p-4 text-left transition text-xs ${
+                      className={`w-full rounded border p-4 text-left transition text-xs ${
                         active
-                          ? "border-blue-500 bg-blue-50/20"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
+                          ? "border-cyan-500 bg-cyan-500/10"
+                          : "border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="font-bold text-slate-900">{entry.name}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{entry.role} • {entry.department}</p>
+                          <p className="font-bold text-zinc-100">{entry.name}</p>
+                          <p className="text-[10px] text-zinc-600 mt-0.5">{entry.role} • {entry.department}</p>
                         </div>
-                        <span className="font-mono text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-150">
+                        <span className="font-mono text-[9px] bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded border border-zinc-800">
                           {entry.wallet.slice(0, 6)}...{entry.wallet.slice(-4)}
                         </span>
                       </div>
@@ -204,12 +207,12 @@ function TransferForm() {
 
             {/* Transfer Justification */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase">Reason for Handoff</label>
+              <label className="block text-[10px] font-semibold text-zinc-600 uppercase">Reason for Handoff</label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 disabled={status !== "idle"}
-                className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+                className="mt-1.5 min-h-20 w-full rounded border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-cyan-500 focus:bg-zinc-900 transition"
                 placeholder="State forensic case, transfer authorization, or courier transit detail..."
                 required
               />
@@ -220,45 +223,45 @@ function TransferForm() {
 
       {/* Signing Panel */}
       <aside className="space-y-6">
-        <section className="border border-slate-200 bg-white p-6 rounded-2xl shadow-xs space-y-5">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">Transaction Signing</h3>
+        <section className="border border-zinc-800 bg-zinc-900/40 p-6 rounded-md space-y-5">
+          <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-wider border-b border-zinc-800 pb-2">Transaction Signing</h3>
           
           <div className="space-y-4 text-xs">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+            <div className="rounded border border-zinc-800 bg-zinc-900/40 p-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-slate-400 font-semibold">Evidence Ref</span>
-                <span className="font-bold text-slate-900">{selectedEvidence?.id || "N/A"}</span>
+                <span className="text-zinc-600 font-semibold">Evidence Ref</span>
+                <span className="font-bold text-zinc-100">{selectedEvidence?.id || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-semibold">Current Holder</span>
-                <span className="font-semibold text-slate-900">{selectedEvidence?.custodian || "N/A"}</span>
+                <span className="text-zinc-600 font-semibold">Current Holder</span>
+                <span className="font-semibold text-zinc-100">{selectedEvidence?.custodian || "N/A"}</span>
               </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400 font-semibold">Current Wallet</span>
-                  <span className="font-mono text-slate-900 text-[10px] truncate" title={currentCustodianWallet || ""}>
+                  <span className="text-zinc-600 font-semibold">Current Wallet</span>
+                  <span className="font-mono text-zinc-100 text-[10px] truncate" title={currentCustodianWallet || ""}>
                     {currentCustodianWallet ? abbreviateWalletAddress(String(currentCustodianWallet)) : "Unlinked"}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400 font-semibold">Creator Wallet</span>
-                  <span className="font-mono text-slate-900 text-[10px] truncate" title={creatorWallet || ""}>
+                  <span className="text-zinc-600 font-semibold">Creator Wallet</span>
+                  <span className="font-mono text-zinc-100 text-[10px] truncate" title={creatorWallet || ""}>
                     {creatorWallet ? abbreviateWalletAddress(String(creatorWallet)) : "Unknown"}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400 font-semibold">Connected Wallet</span>
-                  <span className="font-mono text-slate-900 text-[10px] truncate" title={connectedWallet || ""}>
+                  <span className="text-zinc-600 font-semibold">Connected Wallet</span>
+                  <span className="font-mono text-zinc-100 text-[10px] truncate" title={connectedWallet || ""}>
                     {connectedWallet ? abbreviateWalletAddress(connectedWallet) : "Not connected"}
                   </span>
                 </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-semibold">Handoff Target</span>
-                <span className="font-semibold text-slate-900">{recipient.name}</span>
+                <span className="text-zinc-600 font-semibold">Handoff Target</span>
+                <span className="font-semibold text-zinc-100">{recipient.name}</span>
               </div>
             </div>
 
               {!wallet.installed && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] font-semibold text-amber-800">
+                <div className="rounded border border-amber-500/25 bg-amber-500/10 p-3 text-[11px] font-semibold text-amber-200">
                   MetaMask is not installed. Install the extension to sign custody transfers locally.
                 </div>
               )}
@@ -267,7 +270,7 @@ function TransferForm() {
                 <button
                   type="button"
                   onClick={() => void wallet.connectWallet()}
-                  className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
+                  className="w-full inline-flex h-10 items-center justify-center gap-2 rounded border border-cyan-500/30 bg-cyan-500/10 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/20 transition"
                 >
                   <Send className="h-4 w-4" />
                   <span>Connect MetaMask Wallet</span>
@@ -275,7 +278,7 @@ function TransferForm() {
               )}
 
               {wallet.installed && wallet.isConnected && !walletMatchesCustodian && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] font-semibold text-rose-800">
+                <div className="rounded border border-rose-500/25 bg-rose-500/10 p-3 text-[11px] font-semibold text-rose-200">
                   The connected wallet must match the current custodian wallet to transfer this evidence.
                 </div>
               )}
@@ -288,61 +291,81 @@ function TransferForm() {
                   checked={checkedAuth}
                   onChange={(e) => setCheckedAuth(e.target.checked)}
                   disabled={status !== "idle"}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-350 text-blue-600 focus:ring-blue-500"
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-700 text-cyan-400 focus:ring-cyan-500"
                 />
-                <span className="text-[11px] text-slate-600 leading-tight">
+                <span className="text-[11px] text-zinc-400 leading-tight">
                   I authorize this custody handover using my cryptographic private key. This action will be permanently recorded on the blockchain ledger.
                 </span>
               </label>
 
               <div>
-                <span className="block text-[10px] font-semibold text-slate-400 uppercase">Signer Passphrase / PIN</span>
+                <span className="block text-[10px] font-semibold text-zinc-600 uppercase">Signer Passphrase / PIN</span>
                 <div className="relative mt-1">
-                  <Key className="absolute top-2.5 left-3 h-4 w-4 text-slate-400" />
+                  <Key className="absolute top-2.5 left-3 h-4 w-4 text-zinc-600" />
                   <input
                     type="password"
                     placeholder="Enter security key pin..."
                     value={authPin}
                     onChange={(e) => setAuthPin(e.target.value)}
                     disabled={status !== "idle"}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-4 pl-10 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition"
+                    className="w-full rounded border border-zinc-800 bg-zinc-900/40 py-2 pr-4 pl-10 text-xs text-zinc-200 outline-none focus:border-cyan-500 focus:bg-zinc-900 transition"
                   />
                 </div>
               </div>
             </div>
+
+            {/* Inline error surface — MetaMask rejections, gas failures,
+                validation problems and backend errors all land here. */}
+            {errorMsg && (
+              <div className="flex items-start gap-3 rounded border border-rose-500/25 bg-rose-500/10 p-4">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-rose-200">Transfer not completed</p>
+                  <p className="mt-1 text-xs leading-relaxed text-rose-300">{errorMsg}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErrorMsg("")}
+                  className="shrink-0 rounded-md p-0.5 text-rose-400 hover:bg-rose-500/20 hover:text-rose-800 transition"
+                  aria-label="Dismiss error"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {status === "idle" ? (
               <button
                 type="button"
                 onClick={executeTransfer}
                 disabled={!canTransfer}
-                className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full inline-flex h-11 items-center justify-center gap-2 rounded bg-cyan-600 text-xs font-semibold text-white hover:bg-cyan-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
                 <span>{walletMatchesCustodian ? "Execute Transfer Handoff" : "Connect Custodian Wallet"}</span>
               </button>
             ) : (
-              <div className="border border-slate-200 rounded-xl bg-slate-50 p-4 text-center space-y-3">
-                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-800">
-                  <Cpu className="h-4 w-4 text-blue-600 animate-spin" />
+              <div className="border border-zinc-800 rounded bg-zinc-900/40 p-4 text-center space-y-3">
+                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-zinc-200">
+                  <Cpu className="h-4 w-4 text-cyan-400 animate-spin" />
                   <span>Blockchain Handoff Progress</span>
                 </div>
-                <p className="text-[11px] text-slate-500">{stepMsg}</p>
+                <p className="text-[11px] text-zinc-500">{stepMsg}</p>
               </div>
             )}
 
             {status === "confirmed" && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs space-y-3">
-                <div className="flex items-center gap-2 text-emerald-800 font-bold">
+              <div className="rounded border border-emerald-500/25 bg-emerald-500/10 p-4 text-xs space-y-3">
+                <div className="flex items-center gap-2 text-emerald-200 font-bold">
                   <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0" />
                   <span>Intake Confirmed</span>
                 </div>
-                <p className="text-emerald-700 text-[11px] leading-relaxed">
+                <p className="text-emerald-300 text-[11px] leading-relaxed">
                   Custody successfully transferred to <span className="font-bold">{recipient.name}</span>. The evidence logs have been updated.
                 </p>
                 <div className="pt-2 border-t border-emerald-100 flex gap-2 font-mono text-[9px]">
                   <span className="text-emerald-600 font-bold">Receipt ID:</span>
-                  <span className="text-slate-600">0x55db2f7f82ab...e8c1</span>
+                  <span className="text-zinc-400">0x55db2f7f82ab...e8c1</span>
                 </div>
               </div>
             )}
@@ -357,9 +380,9 @@ export default function TransferCustodyPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center p-12 bg-white rounded-2xl border border-slate-200 shadow-xs">
-          <Clock className="h-5 w-5 text-slate-400 animate-pulse mr-2" />
-          <span className="text-xs text-slate-500 font-semibold">Loading custody data...</span>
+        <div className="flex items-center justify-center p-12 bg-zinc-900/40 rounded-md border border-zinc-800">
+          <Clock className="h-5 w-5 text-zinc-600 animate-pulse mr-2" />
+          <span className="text-xs text-zinc-500 font-semibold">Loading custody data...</span>
         </div>
       }
     >

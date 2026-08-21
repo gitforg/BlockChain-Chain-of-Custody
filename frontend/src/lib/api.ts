@@ -117,8 +117,12 @@ export async function fetchEvidenceList(params: FetchEvidenceParams = {}) {
   );
 }
 
-export async function fetchEvidenceById(id: string) {
-  return fetchJsonWithFallback(`${API_BASE_URL}/api/evidence/${id}`, `GET /api/evidence/${id}`, null);
+export async function fetchEvidenceById(id: string): Promise<any | null> {
+  return fetchJsonWithFallback<any | null>(
+    `${API_BASE_URL}/api/evidence/${id}`,
+    `GET /api/evidence/${id}`,
+    null,
+  );
 }
 
 export async function prepareEvidenceRegistration(formData: FormData) {

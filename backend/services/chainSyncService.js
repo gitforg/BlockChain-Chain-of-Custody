@@ -9,6 +9,23 @@ const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
 const REGISTRY_ADDRESS =
   process.env.REGISTRY_CONTRACT_ADDRESS || "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
+/**
+ * `evidenceId` is declared `string indexed` in EvidenceRegistry, so Solidity
+ * stores only its keccak256 hash in the log topic — the original text is not
+ * recoverable from the event. ethers v6 therefore hands back an `Indexed`
+ * placeholder rather than a string, and a naive `String(arg) === id` comparison
+ * always fails. Compare against the hash instead.
+ */
+function eventArgMatchesEvidenceId(arg, evidenceId) {
+  if (arg === undefined || arg === null) return false;
+
+  if (ethers.Indexed.isIndexed(arg)) {
+    return String(arg.hash).toLowerCase() === ethers.id(String(evidenceId)).toLowerCase();
+  }
+
+  return String(arg) === String(evidenceId);
+}
+
 class ChainSyncService {
   constructor() {
     this.provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -40,6 +57,46 @@ class ChainSyncService {
     return this.contract;
   }
 
+  /**
+   * Recovers the plain-text evidence ID for a transaction.
+   *
+   * The emitted event only carries the keccak256 hash of the ID (see
+   * eventArgMatchesEvidenceId), but the transaction calldata still holds the
+   * original string argument, so decode that instead.
+   */
+  async resolveEvidenceIdFromTx(txHash) {
+    await this.init();
+
+    const tx = await this.provider.getTransaction(txHash);
+    if (!tx?.data) return null;
+
+    try {
+      const parsed = this.contract.interface.parseTransaction({ data: tx.data, value: tx.value });
+      const firstArg = parsed?.args?.[0];
+      return firstArg === undefined || firstArg === null ? null : String(firstArg);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * True when an evidence ID is already claimed on-chain.
+   *
+   * Registrations are permanent, so an ID can be taken on-chain even after its
+   * database row has been destroyed. Returns false if the chain is unreachable
+   * so ID allocation degrades to database-only rather than failing outright.
+   */
+  async isEvidenceRegisteredOnChain(evidenceId) {
+    try {
+      await this.init();
+      const record = await this.contract.evidenceRegistry(evidenceId);
+      return Boolean(record?.exists ?? record?.[8]);
+    } catch (error) {
+      console.warn(`[ChainSync] On-chain ID check skipped: ${error.message}`);
+      return false;
+    }
+  }
+
   async getReceiptAndLog(txHash, eventName, evidenceId) {
     await this.init();
     const receipt = await this.provider.getTransactionReceipt(txHash);
@@ -59,13 +116,15 @@ class ChainSyncService {
       }
     }
 
-    const matchedEvent = parsedEvents.find((event) => {
-      const eventEvidenceId = event.args?.evidenceId || event.args?.[0];
-      return String(eventEvidenceId) === String(evidenceId);
-    });
+    const matchedEvent = parsedEvents.find((event) =>
+      eventArgMatchesEvidenceId(event.args?.evidenceId ?? event.args?.[0], evidenceId),
+    );
 
     if (!matchedEvent) {
-      throw new Error(`No ${eventName} event found for evidence ${evidenceId}`);
+      throw new Error(
+        `No ${eventName} event found for evidence ${evidenceId} in transaction ${txHash}. ` +
+          `The transaction may have been signed against a different contract or chain.`,
+      );
     }
 
     return { receipt, matchedEvent };
@@ -198,11 +257,31 @@ class ChainSyncService {
 
       this.contract.on(
         "EvidenceRegistered",
-        async (evidenceId, caseId, fileHash, ipfsCid, creatorWallet, timestamp, event) => {
+        async (indexedEvidenceId, caseId, fileHash, ipfsCid, creatorWallet, timestamp, event) => {
           try {
-            const receipt = await this.provider.getTransactionReceipt(
-              event?.log?.transactionHash || event?.transactionHash,
-            );
+            const txHash = event?.log?.transactionHash || event?.transactionHash;
+            const receipt = await this.provider.getTransactionReceipt(txHash);
+
+            // The event only exposes the hashed ID, so read it back from calldata.
+            const evidenceId = await this.resolveEvidenceIdFromTx(txHash);
+            if (!evidenceId) {
+              console.warn("[ChainSync] Could not resolve evidence ID for tx", txHash);
+              return;
+            }
+
+            // POST /api/evidence/finalize is the authoritative creator of rows —
+            // it has the title, notes, custodian and file metadata that the event
+            // does not carry. Creating a placeholder row here would litter the
+            // archive with junk entries and resurrect records deleted via
+            // "Destroy Record", so only reconcile records we already know about.
+            const known = await prisma.evidence.findUnique({ where: { id: evidenceId } });
+            if (!known) {
+              console.log(
+                `[ChainSync] EvidenceRegistered for ${evidenceId} has no local record; leaving creation to /finalize.`,
+              );
+              return;
+            }
+
             await this.syncEvidenceRegistered({
               evidenceId,
               title: evidenceId,
@@ -230,11 +309,14 @@ class ChainSyncService {
 
       this.contract.on(
         "CustodyTransferred",
-        async (evidenceId, previousCustodian, newCustodian, timestamp, event) => {
+        async (indexedEvidenceId, previousCustodian, newCustodian, timestamp, event) => {
           try {
-            const receipt = await this.provider.getTransactionReceipt(
-              event?.log?.transactionHash || event?.transactionHash,
-            );
+            const txHash = event?.log?.transactionHash || event?.transactionHash;
+            const receipt = await this.provider.getTransactionReceipt(txHash);
+
+            const evidenceId = await this.resolveEvidenceIdFromTx(txHash);
+            if (!evidenceId) return;
+
             const evidence = await prisma.evidence.findUnique({ where: { id: evidenceId } });
             if (!evidence) return;
 
